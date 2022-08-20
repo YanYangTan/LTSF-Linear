@@ -18,7 +18,8 @@ python -u run.py \
   --dec_in 1 \
   --c_out 1 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --d_ff 128
 
 python -u run.py \
   --is_training 1 \
@@ -38,7 +39,8 @@ python -u run.py \
   --dec_in 1 \
   --c_out 1 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --d_ff 128
 
 python -u run.py \
   --is_training 1 \
@@ -58,7 +60,8 @@ python -u run.py \
   --dec_in 1 \
   --c_out 1 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --d_ff 128
 
 python -u run.py \
   --is_training 1 \
@@ -78,4 +81,5 @@ python -u run.py \
   --dec_in 1 \
   --c_out 1 \
   --des 'Exp' \
-  --itr 1
+  --itr 1 \
+  --d_ff 128
