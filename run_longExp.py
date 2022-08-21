@@ -37,6 +37,8 @@ parser.add_argument('--pred_len', type=int, default=96, help='prediction sequenc
 # DLinear
 parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
 # Formers 
+parser.add_argument('--bucket_size', type=int, default=4, help='for Reformer')#Reformer
+parser.add_argument('--n_hashes', type=int, default=4, help='for Reformer')
 parser.add_argument('--embed_type', type=int, default=1, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
 parser.add_argument('--enc_in', type=int, default=7, help='encoder input size') # DLinear with --individual, use this hyperparameter as the number of channels
 parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
@@ -46,6 +48,7 @@ parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
 parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
 parser.add_argument('--d_layers', type=int, default=1, help='num of decoder layers')
 parser.add_argument('--d_ff', type=int, default=2048, help='dimension of fcn')
+parser.add_argument('--K', type=int, default=1, help='Top-K Fourier bases')#ETS
 parser.add_argument('--moving_avg', type=int, default=25, help='window size of moving average')
 parser.add_argument('--factor', type=int, default=1, help='attn factor')
 parser.add_argument('--distil', action='store_false',
@@ -57,6 +60,18 @@ parser.add_argument('--embed', type=str, default='timeF',
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+
+
+# supplementary config for FEDformer model
+parser.add_argument('--version', type=str, default='Fourier',
+                    help='for FEDformer, there are two versions to choose, options: [Fourier, Wavelets]')
+parser.add_argument('--mode_select', type=str, default='random',
+                    help='for FEDformer, there are two mode selection method, options: [random, low]')
+parser.add_argument('--modes', type=int, default=64, help='modes to be selected random 64')
+parser.add_argument('--L', type=int, default=3, help='ignore level')
+parser.add_argument('--base', type=str, default='legendre', help='mwt base')
+parser.add_argument('--cross_activation', type=str, default='tanh',
+                    help='mwt cross atention activation function tanh or softmax')
 
 # NSTransformer
 parser.add_argument('--p_hidden_dims', type=int, nargs='+', help='hidden layer dimensions of projector (List)')
