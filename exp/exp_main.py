@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import Informer, Autoformer, Transformer, NSTransformer, DLinear, N_BEATS
+from models import Informer, Autoformer, Transformer,Reformer,FEDformer,ETSformer, NSTransformer, DLinear, N_BEATS
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -27,6 +27,9 @@ class Exp_Main(Exp_Basic):
             'Autoformer': Autoformer,
             'Transformer': Transformer,
             'Informer': Informer,
+            'Reformer': Reformer,
+            'FEDformer': FEDformer,
+            'ETSformer': ETSformer,
             'DLinear': DLinear,
             'NSTransformer': NSTransformer,
             'DLinear': DLinear,
@@ -181,6 +184,8 @@ class Exp_Main(Exp_Basic):
                     scaler.update()
                 else:
                     loss.backward()
+                    if self.args.model is 'ETSformer':
+                        torch.nn.utils.clip_grad_norm(self.model.parameters(), 1.0)
                     model_optim.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
