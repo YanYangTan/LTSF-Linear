@@ -11,6 +11,9 @@ fi
 
 for model_name in Naive GBRT ARIMA SARIMA
   do
+  if [ ! -d "./logs/LongForecasting/"$model_name ]; then
+      mkdir ./logs/LongForecasting/$model_name
+  fi
   for pred_len in 96 192 336 720
     do
       python -u run_stat.py \

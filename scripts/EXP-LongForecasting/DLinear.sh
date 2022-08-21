@@ -9,6 +9,9 @@ fi
 
 for model_name in DLinear
 do 
+if [ ! -d "./logs/LongForecasting/"$model_name ]; then
+    mkdir ./logs/LongForecasting/$model_name
+fi
 for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
@@ -27,7 +30,7 @@ do
     --c_out 8 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 1 >logs/LongForecasting/$model_name/exchange_rate/$pred_len.log
+    --train_epochs 1 >logs/LongForecasting/$model_name/'exchange_rate_'$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -44,7 +47,7 @@ do
       --dec_in 321 \
       --c_out 321 \
       --des 'Exp' \
-      --itr 1 >logs/LongForecasting/$model_name/electricity/$pred_len.log
+      --itr 1 >logs/LongForecasting/$model_name/'electricity_'$pred_len.log
 
   python -u run_longExp.py \
     --is_training 1 \
@@ -62,7 +65,7 @@ do
     --c_out 862 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 3 >logs/LongForecasting/$model_name/traffic/$pred_len.log
+    --train_epochs 3 >logs/LongForecasting/$model_name/'traffic_'$pred_len.log
 
   python -u run_longExp.py \
     --is_training 1 \
@@ -80,7 +83,7 @@ do
     --c_out 21 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 2 >logs/LongForecasting/$model_name/weather/$pred_len.log
+    --train_epochs 2 >logs/LongForecasting/$model_name/'weather_'$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -97,7 +100,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LongForecasting/$model_name/Etth1/$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/'Etth1_'$pred_len.log
   
   python -u run_longExp.py \
       --is_training 1 \
@@ -114,7 +117,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LongForecasting/$model_name/Etth2/$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/'Etth2_'$pred_len.log
   
   python -u run_longExp.py \
       --is_training 1 \
@@ -131,7 +134,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LongForecasting/$model_name/Ettm1/$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/'Ettm1_'$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -148,7 +151,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LongForecasting/$model_name/Ettm2/$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/'Ettm2_'$pred_len.log
 done
 done
 
@@ -171,6 +174,6 @@ do
     --dec_in 7 \
     --c_out 7 \
     --des 'Exp' \
-    --itr 1 >logs/LongForecasting/$model_name/ili/$pred_len.log
+    --itr 1 >logs/LongForecasting/$model_name/'ili_'$pred_len.log
 done
 done

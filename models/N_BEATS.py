@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from layers.blocks import GenericBasis, TrendBasis, SeasonalityBasis, NBeatsBlock
+from layers.Blocks import GenericBasis, TrendBasis, SeasonalityBasis, NBeatsBlock
 
 class NBeats(torch.nn.Module):
     """

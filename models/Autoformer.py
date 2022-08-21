@@ -42,7 +42,6 @@ class Model(nn.Module):
                                                     configs.dropout)
             self.dec_embedding = DataEmbedding_wo_pos(configs.dec_in, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
-
         elif configs.embed_type == 3:
             self.enc_embedding = DataEmbedding_wo_temp(configs.enc_in, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
