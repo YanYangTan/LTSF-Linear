@@ -30,7 +30,7 @@ class Exp_Main(Exp_Basic):
             'DLinear': DLinear,
             'NSTransformer': NSTransformer,
             'DLinear': DLinear,
-            'N_BETAS': N_BEATS
+            'N_BEATS': N_BEATS
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
