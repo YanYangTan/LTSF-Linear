@@ -27,7 +27,7 @@ for model_name in Naive GBRT ARIMA SARIMA
         --seq_len 96 \
         --pred_len $pred_len \
         --des 'Exp' \
-        --itr 1 >logs/LongForecasting/$model_name'_ETTh1_'$pred_len.log
+        --itr 1 >logs/LongForecasting/$model_name/'_ETTh1_'$pred_len.log
 
       python -u run_stat.py \
         --is_training 1 \
@@ -40,7 +40,7 @@ for model_name in Naive GBRT ARIMA SARIMA
         --seq_len 96 \
         --pred_len $pred_len \
         --des 'Exp' \
-        --itr 1 >logs/LongForecasting/$model_name'_ETTh2_'$pred_len.log
+        --itr 1 >logs/LongForecasting/$model_name/'_ETTh2_'$pred_len.log
 
       python -u run_stat.py \
         --is_training 1 \
@@ -53,7 +53,7 @@ for model_name in Naive GBRT ARIMA SARIMA
         --seq_len 96 \
         --pred_len $pred_len \
         --des 'Exp' \
-        --itr 1 >logs/LongForecasting/$model_name'_ETTm1_'$pred_len.log
+        --itr 1 >logs/LongForecasting/$model_name/'_ETTm1_'$pred_len.log
 
       python -u run_stat.py \
         --is_training 1 \
@@ -66,7 +66,7 @@ for model_name in Naive GBRT ARIMA SARIMA
         --seq_len 96 \
         --pred_len $pred_len \
         --des 'Exp' \
-        --itr 1 --batch_size 300 >logs/LongForecasting/$model_name'_ETTm2_'$pred_len.log
+        --itr 1 --batch_size 300 >logs/LongForecasting/$model_name/'_ETTm2_'$pred_len.log
 
     python -u run_stat.py \
       --is_training 1 \
@@ -79,7 +79,7 @@ for model_name in Naive GBRT ARIMA SARIMA
       --seq_len 96 \
       --pred_len $pred_len \
       --des 'Exp' \
-      --itr 1 >logs/LongForecasting/$model_name'_exchange_rate_'$pred_len.log
+      --itr 1 >logs/LongForecasting/$model_name/'_exchange_rate_'$pred_len.log
       
     python -u run_stat.py \
       --is_training 1 \
@@ -92,7 +92,7 @@ for model_name in Naive GBRT ARIMA SARIMA
       --seq_len 96 \
       --pred_len $pred_len \
       --des 'Exp' \
-      --itr 1 >logs/LongForecasting/$model_name'_weather_'$pred_len.log
+      --itr 1 >logs/LongForecasting/$model_name/'_weather_'$pred_len.log
 
     python -u run_stat.py \
       --is_training 1 \
@@ -105,7 +105,7 @@ for model_name in Naive GBRT ARIMA SARIMA
       --seq_len 96 \
       --pred_len $pred_len \
       --des 'Exp' \
-      --itr 1 >logs/LongForecasting/$model_name'_electricity_'$pred_len.log
+      --itr 1 >logs/LongForecasting/$model_name/'_electricity_'$pred_len.log
 
     python -u run_stat.py \
       --is_training 1 \
@@ -118,7 +118,7 @@ for model_name in Naive GBRT ARIMA SARIMA
       --seq_len 96 \
       --pred_len $pred_len \
       --des 'Exp' \
-      --itr 1 >logs/LongForecasting/$model_name'_traffic_'$pred_len.log
+      --itr 1 >logs/LongForecasting/$model_name/'_traffic_'$pred_len.log
   done
 done
 
@@ -139,6 +139,6 @@ for model_name in Naive
           --label_len 18 \
           --pred_len $pred_len \
           --des 'Exp' \
-          --itr 1 >logs/LongForecasting/$model_name'_ili_'$pred_len.log
+          --itr 1 >logs/LongForecasting/$model_name/'_ili_'$pred_len.log
   done
 done
