@@ -7,7 +7,7 @@ if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
 
-for model_name in N_BEATS
+for model_name in Transformer
 do 
 for pred_len in 96 192 336 720
 do
@@ -20,10 +20,10 @@ do
     --data custom \
     --features M \
     --seq_len 96 \
+    --label_len 48 \
     --pred_len $pred_len \
-    --e_layers 4 \
-    --d_layers 4 \
-    --d_ff 128 \
+    --e_layers 2 \
+    --d_layers 1 \
     --factor 3 \
     --enc_in 8 \
     --dec_in 8 \
@@ -41,10 +41,10 @@ do
       --data custom \
       --features M \
       --seq_len 96 \
+      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 4 \
-      --d_layers 4 \
-      --d_ff 128 \
+      --e_layers 2 \
+      --d_layers 1 \
       --factor 3 \
       --enc_in 321 \
       --dec_in 321 \
@@ -61,10 +61,10 @@ do
     --data custom \
     --features M \
     --seq_len 96 \
+    --label_len 48 \
     --pred_len $pred_len \
-    --e_layers 4 \
-    --d_layers 4 \
-    --d_ff 128 \
+    --e_layers 2 \
+    --d_layers 1 \
     --factor 3 \
     --enc_in 862 \
     --dec_in 862 \
@@ -82,10 +82,10 @@ do
     --data custom \
     --features M \
     --seq_len 96 \
+    --label_len 48 \
     --pred_len $pred_len \
-    --e_layers 4 \
-    --d_layers 4 \
-    --d_ff 128 \
+    --e_layers 2 \
+    --d_layers 1 \
     --factor 3 \
     --enc_in 21 \
     --dec_in 21 \
@@ -103,10 +103,10 @@ do
       --data ETTh1 \
       --features M \
       --seq_len 96 \
+      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 4 \
-      --d_layers 4 \
-      --d_ff 128 \
+      --e_layers 2 \
+      --d_layers 1 \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
@@ -123,10 +123,10 @@ do
       --data ETTh2 \
       --features M \
       --seq_len 96 \
+      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 4 \
-      --d_layers 4 \
-      --d_ff 128 \
+      --e_layers 2 \
+      --d_layers 1 \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
@@ -143,10 +143,10 @@ do
       --data ETTm1 \
       --features M \
       --seq_len 96 \
+      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 4 \
-      --d_layers 4 \
-      --d_ff 128 \
+      --e_layers 2 \
+      --d_layers 1 \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
@@ -163,10 +163,10 @@ do
       --data ETTm2 \
       --features M \
       --seq_len 96 \
+      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 4 \
-      --d_layers 4 \
-      --d_ff 128 \
+      --e_layers 2 \
+      --d_layers 1 \
       --factor 3 \
       --enc_in 7 \
       --dec_in 7 \
@@ -176,7 +176,7 @@ do
 done
 done
 
-for model_name in N_BEATS
+for model_name in Transformer
 do 
 for pred_len in 24 36 48 60
 do
@@ -189,10 +189,10 @@ do
     --data custom \
     --features M \
     --seq_len 36 \
+    --label_len 18 \
     --pred_len $pred_len \
-    --e_layers 4 \
-    --d_layers 4 \
-    --d_ff 128 \
+    --e_layers 2 \
+    --d_layers 1 \
     --factor 3 \
     --enc_in 7 \
     --dec_in 7 \

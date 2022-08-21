@@ -34,7 +34,6 @@ parser.add_argument('--seq_len', type=int, default=96, help='input sequence leng
 parser.add_argument('--label_len', type=int, default=48, help='start token length')
 parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
 
-
 # DLinear
 parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
 # Formers 
@@ -58,6 +57,13 @@ parser.add_argument('--embed', type=str, default='timeF',
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+
+# NSTransformer
+parser.add_argument('--p_hidden_dims', type=int, nargs='+', help='hidden layer dimensions of projector (List)')
+parser.add_argument('--p_hidden_layers', type=int, default=1, help='number of hidden layers in projector')
+
+# DLinear
+parser.add_argument('--block_type', default='g', help='NBETAS block type: g for GenericBasis, s for SeasonityBasis block and t for TrendBasis')
 
 # optimization
 parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')

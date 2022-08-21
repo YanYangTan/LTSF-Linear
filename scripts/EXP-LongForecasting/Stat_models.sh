@@ -9,8 +9,7 @@ if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
 
-# for model_name in Naive GBRT ARIMA SARIMA
-for model_name in Naive
+for model_name in Naive GBRT ARIMA SARIMA
   do
   for pred_len in 96 192 336 720
     do

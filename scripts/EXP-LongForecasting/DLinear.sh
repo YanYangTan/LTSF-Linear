@@ -1,20 +1,13 @@
-# 0: default
-# 1: value embedding + temporal embedding + positional embedding
-# 2: value embedding + temporal embedding
-# 3: value embedding + positional embedding
-# 4: value embedding 
-
+# ALL scripts in this file come from Autoformer
 if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-if [ ! -d "./logs/Embedding" ]; then
-    mkdir ./logs/Embedding
+if [ ! -d "./logs/LongForecasting" ]; then
+    mkdir ./logs/LongForecasting
 fi
 
-for embed_type in 1 2 3 4
-do
-for model_name in Autoformer Informer Transformer
+for model_name in DLinear
 do 
 for pred_len in 96 192 336 720
 do
@@ -27,17 +20,14 @@ do
     --data custom \
     --features M \
     --seq_len 96 \
-    --label_len 48 \
     --pred_len $pred_len \
-    --e_layers 2 \
-    --d_layers 1 \
-    --factor 3 \
+    --learning_rate 0.001 \
     --enc_in 8 \
     --dec_in 8 \
     --c_out 8 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 1 --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_exchange_rate_'$pred_len.log
+    --train_epochs 1 >logs/LongForecasting/$model_name/exchange_rate/$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -48,16 +38,13 @@ do
       --data custom \
       --features M \
       --seq_len 96 \
-      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
-      --factor 3 \
+      --learning_rate 0.001 \
       --enc_in 321 \
       --dec_in 321 \
       --c_out 321 \
       --des 'Exp' \
-      --itr 1 --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_electricity_'$pred_len.log
+      --itr 1 >logs/LongForecasting/$model_name/electricity/$pred_len.log
 
   python -u run_longExp.py \
     --is_training 1 \
@@ -68,17 +55,14 @@ do
     --data custom \
     --features M \
     --seq_len 96 \
-    --label_len 48 \
     --pred_len $pred_len \
-    --e_layers 2 \
-    --d_layers 1 \
-    --factor 3 \
+    --learning_rate 0.001 \
     --enc_in 862 \
     --dec_in 862 \
     --c_out 862 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 3 --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_traffic_'$pred_len.log
+    --train_epochs 3 >logs/LongForecasting/$model_name/traffic/$pred_len.log
 
   python -u run_longExp.py \
     --is_training 1 \
@@ -89,17 +73,14 @@ do
     --data custom \
     --features M \
     --seq_len 96 \
-    --label_len 48 \
     --pred_len $pred_len \
-    --e_layers 2 \
-    --d_layers 1 \
-    --factor 3 \
+    --learning_rate 0.001 \
     --enc_in 21 \
     --dec_in 21 \
     --c_out 21 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 2 --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_weather_'$pred_len.log
+    --train_epochs 2 >logs/LongForecasting/$model_name/weather/$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -110,16 +91,13 @@ do
       --data ETTh1 \
       --features M \
       --seq_len 96 \
-      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
-      --factor 3 \
+      --learning_rate 0.001 \
       --enc_in 7 \
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_Etth1_'$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/Etth1/$pred_len.log
   
   python -u run_longExp.py \
       --is_training 1 \
@@ -130,16 +108,13 @@ do
       --data ETTh2 \
       --features M \
       --seq_len 96 \
-      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
-      --factor 3 \
+      --learning_rate 0.001 \
       --enc_in 7 \
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_Etth2_'$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/Etth2/$pred_len.log
   
   python -u run_longExp.py \
       --is_training 1 \
@@ -150,16 +125,13 @@ do
       --data ETTm1 \
       --features M \
       --seq_len 96 \
-      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
-      --factor 3 \
+      --learning_rate 0.001 \
       --enc_in 7 \
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_Ettm1_'$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/Ettm1/$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -170,23 +142,17 @@ do
       --data ETTm2 \
       --features M \
       --seq_len 96 \
-      --label_len 48 \
       --pred_len $pred_len \
-      --e_layers 2 \
-      --d_layers 1 \
-      --factor 3 \
+      --learning_rate 0.001 \
       --enc_in 7 \
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_Ettm2_'$pred_len.log
-done
+      --itr 1  >logs/LongForecasting/$model_name/Ettm2/$pred_len.log
 done
 done
 
-for embed_type in 1 2 3 4
-do
-for model_name in Autoformer Informer Transformer
+for model_name in DLinear
 do 
 for pred_len in 24 36 48 60
 do
@@ -199,16 +165,12 @@ do
     --data custom \
     --features M \
     --seq_len 36 \
-    --label_len 18 \
     --pred_len $pred_len \
-    --e_layers 2 \
-    --d_layers 1 \
-    --factor 3 \
+    --learning_rate 0.001 \
     --enc_in 7 \
     --dec_in 7 \
     --c_out 7 \
     --des 'Exp' \
-    --itr 1 --embed_type $embed_type >logs/Embedding/$embed_type'_'$model_name'_ili_'$pred_len.log
-done
+    --itr 1 >logs/LongForecasting/$model_name/ili/$pred_len.log
 done
 done

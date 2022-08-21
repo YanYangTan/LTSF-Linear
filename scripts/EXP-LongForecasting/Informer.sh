@@ -1,16 +1,15 @@
+# ALL scripts in this file come from Autoformer
 if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-if [ ! -d "./logs/LookBackWindow" ]; then
-    mkdir ./logs/LookBackWindow
+if [ ! -d "./logs/LongForecasting" ]; then
+    mkdir ./logs/LongForecasting
 fi
 
-for model_name in Autoformer Informer Transformer
+for model_name in Informer
 do 
-for pred_len in 24 720
-do
-for seq_len in 48 72 96 120 144 168 192 336 504 672 720
+for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
     --is_training 1 \
@@ -31,7 +30,7 @@ do
     --c_out 8 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 1 >logs/LookBackWindow/$model_name'_exchange_rate'_$seq_len'_'$pred_len.log
+    --train_epochs 1 >logs/LongForecasting/$model_name/exchange_rate/$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -51,7 +50,7 @@ do
       --dec_in 321 \
       --c_out 321 \
       --des 'Exp' \
-      --itr 1 >logs/LookBackWindow/$model_name'_electricity'_$seq_len'_'$pred_len.log
+      --itr 1 >logs/LongForecasting/$model_name/electricity/$pred_len.log
 
   python -u run_longExp.py \
     --is_training 1 \
@@ -72,7 +71,7 @@ do
     --c_out 862 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 3 >logs/LookBackWindow/$model_name'_traffic'_$seq_len'_'$pred_len.log
+    --train_epochs 3 >logs/LongForecasting/$model_name/traffic/$pred_len.log
 
   python -u run_longExp.py \
     --is_training 1 \
@@ -93,7 +92,7 @@ do
     --c_out 21 \
     --des 'Exp' \
     --itr 1 \
-    --train_epochs 2 >logs/LookBackWindow/$model_name'_weather'_$seq_len'_'$pred_len.log
+    --train_epochs 2 >logs/LongForecasting/$model_name/weather/$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -113,7 +112,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LookBackWindow/$model_name'_Etth1'_$seq_len'_'$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/Etth1/$pred_len.log
   
   python -u run_longExp.py \
       --is_training 1 \
@@ -133,19 +132,8 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LookBackWindow/$model_name'_Etth2'_$seq_len'_'$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/Etth2/$pred_len.log
   
-
-done
-done
-done
-
-for model_name in Autoformer Informer Transformer
-do 
-for pred_len in 24 720
-do
-for seq_len in 36 48 60 72 144 288
-do
   python -u run_longExp.py \
       --is_training 1 \
       --root_path ./dataset/ \
@@ -164,7 +152,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LookBackWindow/$model_name'_Ettm1'_$seq_len'_'$pred_len.log
+      --itr 1  >logs/LongForecasting/$model_name/Ettm1/$pred_len.log
 
   python -u run_longExp.py \
       --is_training 1 \
@@ -184,16 +172,13 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
-      --itr 1  >logs/LookBackWindow/$model_name'_Ettm2'_$seq_len'_'$pred_len.log
-done
+      --itr 1  >logs/LongForecasting/$model_name/Ettm2/$pred_len.log
 done
 done
 
-for model_name in Autoformer Informer Transformer
+for model_name in Informer
 do 
-for pred_len in 24 60
-do
-for seq_len in 26 52 78 104 130 156 208
+for pred_len in 24 36 48 60
 do
   python -u run_longExp.py \
     --is_training 1 \
@@ -213,7 +198,6 @@ do
     --dec_in 7 \
     --c_out 7 \
     --des 'Exp' \
-    --itr 1 >logs/LookBackWindow/$model_name'_ili'_$seq_len'_'$pred_len.log
-done
+    --itr 1 >logs/LongForecasting/$model_name/ili/$pred_len.log
 done
 done
