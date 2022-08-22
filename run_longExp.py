@@ -16,11 +16,12 @@ parser = argparse.ArgumentParser(description='Autoformer & Transformer family fo
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
 parser.add_argument('--model', type=str, required=True, default='Autoformer',
-                    help='model name, options: [Autoformer, Informer, Transformer]')
+                    help='model name, options: [Autoformer, Informer, Transformer, DLinear, NSTransformer, N_BEATS]')
+parser.add_argument('--decoder', type=str, default='FC') # Pyraformer selection: [FC, attention]
 
 # data loader
 parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
-parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
+parser.add_argument('--root_path', type=str, default='./dataset/ETT-small/', help='root path of the data file')
 parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
 parser.add_argument('--features', type=str, default='M',
                     help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
@@ -28,11 +29,18 @@ parser.add_argument('--target', type=str, default='OT', help='target feature in 
 parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+parser.add_argument('--predict_step', type=int, default=168) # Pyraformer
+parser.add_argument('--input_size', type=int, default=168)# Pyraformer
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
 parser.add_argument('--label_len', type=int, default=48, help='start token length')
 parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
+
+# Common
+parser.add_argument('--enc_in', type=int, default=7, help='encoder input size') # DLinear with --individual, use this hyperparameter as the number of channels
+parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
+parser.add_argument('--c_out', type=int, default=7, help='output size')
 
 # DLinear
 parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
@@ -40,9 +48,6 @@ parser.add_argument('--individual', action='store_true', default=False, help='DL
 parser.add_argument('--bucket_size', type=int, default=4, help='for Reformer')#Reformer
 parser.add_argument('--n_hashes', type=int, default=4, help='for Reformer')
 parser.add_argument('--embed_type', type=int, default=1, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
-parser.add_argument('--enc_in', type=int, default=7, help='encoder input size') # DLinear with --individual, use this hyperparameter as the number of channels
-parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
-parser.add_argument('--c_out', type=int, default=7, help='output size')
 parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
 parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
 parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
@@ -60,7 +65,20 @@ parser.add_argument('--embed', type=str, default='timeF',
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+parser.add_argument('--std', type=float, default=0.2)#ETS
+# Pyraformer parameters.
+parser.add_argument('--window_size', type=str, default='[4, 4, 4]') # The number of children of a parent node.
+parser.add_argument('--inner_size', type=int, default=3) # The number of ajacent nodes.
+parser.add_argument('-d_inner_hid', type=int, default=512)
+parser.add_argument('-d_k', type=int, default=128)
+parser.add_argument('-d_v', type=int, default=128)
+parser.add_argument('-d_bottleneck', type=int, default=128)
+parser.add_argument('-n_layer', type=int, default=4)
 
+# CSCM structure. selection: [Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct] (Pyraformer)
+parser.add_argument('--CSCM', type=str, default='Bottleneck_Construct')
+parser.add_argument('--truncate', action='store_true', default=False) # Whether to remove coarse-scale nodes from the attention structure
+parser.add_argument('--use_tvm', action='store_true', default=False) # Whether to use TVM.
 
 # supplementary config for FEDformer model
 parser.add_argument('--version', type=str, default='Fourier',
@@ -74,15 +92,15 @@ parser.add_argument('--cross_activation', type=str, default='tanh',
                     help='mwt cross atention activation function tanh or softmax')
 
 # NSTransformer
-parser.add_argument('--p_hidden_dims', type=int, nargs='+', help='hidden layer dimensions of projector (List)')
-parser.add_argument('--p_hidden_layers', type=int, default=1, help='number of hidden layers in projector')
+parser.add_argument('--p_hidden_dims', type=int, nargs='+', default=[64, 64], help='hidden layer dimensions of projector (List)')
+parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
 
 # DLinear
 parser.add_argument('--block_type', default='g', help='NBETAS block type: g for GenericBasis, s for SeasonityBasis block and t for TrendBasis')
 
 # optimization
-parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
-parser.add_argument('--itr', type=int, default=2, help='experiments times')
+parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
+parser.add_argument('--itr', type=int, default=1, help='experiments times')
 parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
 parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
 parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
@@ -102,6 +120,12 @@ parser.add_argument('--test_flop', action='store_true', default=False, help='See
 args = parser.parse_args()
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
+#Pyraformer
+if torch.cuda.is_available():
+    args.device = torch.device("cuda")
+else:
+    args.device = torch.device('cpu')
+args.window_size = eval(args.window_size)
 
 if args.use_gpu and args.use_multi_gpu:
     args.dvices = args.devices.replace(' ', '')

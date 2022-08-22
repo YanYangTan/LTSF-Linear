@@ -115,7 +115,6 @@ class DataEmbedding(nn.Module):
         x = self.value_embedding(x) + self.temporal_embedding(x_mark) + self.position_embedding(x)
         return self.dropout(x)
 
-
 class DataEmbedding_wo_pos(nn.Module):
     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
         super(DataEmbedding_wo_pos, self).__init__()
@@ -161,4 +160,22 @@ class DataEmbedding_wo_temp(nn.Module):
 
     def forward(self, x, x_mark):
         x = self.value_embedding(x) + self.position_embedding(x)
+        return self.dropout(x)
+
+"""The CustomEmbedding is used by the electricity dataset and app flow dataset for long range forecasting."""
+class CustomEmbedding(nn.Module):
+    def __init__(self, c_in, d_model, temporal_size, seq_num, dropout=0.1):
+        super(CustomEmbedding, self).__init__()
+
+        self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
+        self.position_embedding = PositionalEmbedding(d_model=d_model)
+        self.temporal_embedding = nn.Linear(temporal_size, d_model)
+        self.seqid_embedding = nn.Embedding(seq_num, d_model)
+
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, x, x_mark):
+        x = self.value_embedding(x) + self.position_embedding(x) + self.temporal_embedding(x_mark[:, :, :-1])\
+            + self.seqid_embedding(x_mark[:, :, -1].long())
+
         return self.dropout(x)

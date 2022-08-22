@@ -24,10 +24,10 @@ class Transform:
         return x + (torch.randn(x.size(-1)).to(x.device) * self.sigma)
 
 
-class ETSformer(nn.Module):
+class Model(nn.Module):
 
     def __init__(self, configs):
-        super().__init__()
+        super(Model,self).__init__()
         self.seq_len = configs.seq_len
         self.label_len = configs.label_len
         self.pred_len = configs.pred_len
