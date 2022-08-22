@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import Informer, Autoformer, Transformer,Reformer,FEDformer,ETSformer,Pyraformer, NSTransformer, DLinear, N_BEATS
+from models import Informer, Autoformer, Transformer,Reformer,FEDformer,ETSformer,Pyraformer, NSTransformer,SparseTransformer, DLinear, N_BEATS,DeepTCN,LSTM,StemGNN
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -31,19 +31,29 @@ class Exp_Main(Exp_Basic):
             'FEDformer': FEDformer,
             'ETSformer': ETSformer,
             'Pyraformer': Pyraformer,
+            'SparseTransformer':SparseTransformer,
             'DLinear': DLinear,
+            'DeepTCN':DeepTCN,
+            'LSTM':LSTM,
+            'StemGNN':StemGNN,
             'NSTransformer': NSTransformer,
-            'DLinear': DLinear,
             'N_BEATS': N_BEATS
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
+
+        self.modelShortY_list=[
+            'DeepTCN','LSTM','SparseTransformer','StemGNN'
+        ]
         return model
 
     def _get_data(self, flag):
-        data_set, data_loader = data_provider(self.args, flag)
+        if self.args.model in  self.modelShortY_list:
+            data_set, data_loader = data_provider(self.args, flag, ShortY=True)
+        else:
+            data_set, data_loader = data_provider(self.args, flag)
         return data_set, data_loader
 
     def _select_optimizer(self):

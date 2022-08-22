@@ -1,4 +1,4 @@
-from data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
+from data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred,CustomDataLoaderShortY
 from torch.utils.data import DataLoader
 
 data_dict = {
@@ -10,8 +10,11 @@ data_dict = {
 }
 
 
-def data_provider(args, flag):
-    Data = data_dict[args.data]
+def data_provider(args, flag, ShortY=False):
+    if ShortY:
+        Data = CustomDataLoaderShortY
+    else:
+        Data = data_dict[args.data]
     timeenc = 0 if args.embed != 'timeF' else 1
 
     if flag == 'test':

@@ -66,6 +66,14 @@ parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
 parser.add_argument('--std', type=float, default=0.2)#ETS
+parser.add_argument('--dilations',type=int,default=[1,2,4,8,16])
+parser.add_argument('--mix', default=True) # SparseTransformer
+
+#StemGNN
+parser.add_argument('--stack_cnt', type=int, default=2, help='')
+parser.add_argument('--multi_layer', type=int, default=5, help='')
+parser.add_argument('--leaky_rate', type=float, default=0.2, help='')
+
 # Pyraformer parameters.
 parser.add_argument('--window_size', type=str, default='[4, 4, 4]') # The number of children of a parent node.
 parser.add_argument('--inner_size', type=int, default=3) # The number of ajacent nodes.
@@ -74,6 +82,7 @@ parser.add_argument('-d_k', type=int, default=128)
 parser.add_argument('-d_v', type=int, default=128)
 parser.add_argument('-d_bottleneck', type=int, default=128)
 parser.add_argument('-n_layer', type=int, default=4)
+
 
 # CSCM structure. selection: [Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct] (Pyraformer)
 parser.add_argument('--CSCM', type=str, default='Bottleneck_Construct')
