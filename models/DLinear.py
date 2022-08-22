@@ -54,7 +54,7 @@ class Model(nn.Module):
             self.Linear_Seasonal = nn.ModuleList()
             self.Linear_Trend = nn.ModuleList()
             
-            for i in range(self.channels):
+            for _ in range(self.channels):
                 self.Linear_Seasonal.append(nn.Linear(self.seq_len,self.pred_len))
                 self.Linear_Trend.append(nn.Linear(self.seq_len,self.pred_len))
 
@@ -65,13 +65,13 @@ class Model(nn.Module):
             self.Linear_Seasonal = nn.Linear(self.seq_len,self.pred_len)
             self.Linear_Trend = nn.Linear(self.seq_len,self.pred_len)
             
-            # Use this two lines if you want to visualize the weights
             # self.Linear_Seasonal.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
             # self.Linear_Trend.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
 
-    def forward(self, x):
-        # x: [Batch, Input length, Channel]
-        seasonal_init, trend_init = self.decompsition(x)
+    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
+                enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
+        # x_enc: [Batch, Input length, Channel]
+        seasonal_init, trend_init = self.decompsition(x_enc)
         seasonal_init, trend_init = seasonal_init.permute(0,2,1), trend_init.permute(0,2,1)
         if self.individual:
             seasonal_output = torch.zeros([seasonal_init.size(0),seasonal_init.size(1),self.pred_len],dtype=seasonal_init.dtype).to(seasonal_init.device)

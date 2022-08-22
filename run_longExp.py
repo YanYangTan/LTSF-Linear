@@ -16,11 +16,11 @@ parser = argparse.ArgumentParser(description='Autoformer & Transformer family fo
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
 parser.add_argument('--model', type=str, required=True, default='Autoformer',
-                    help='model name, options: [Autoformer, Informer, Transformer]')
+                    help='model name, options: [Autoformer, Informer, Transformer, DLinear, NSTransformer, N_BEATS]')
 
 # data loader
 parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
-parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
+parser.add_argument('--root_path', type=str, default='./dataset/ETT-small/', help='root path of the data file')
 parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
 parser.add_argument('--features', type=str, default='M',
                     help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
@@ -34,13 +34,16 @@ parser.add_argument('--seq_len', type=int, default=96, help='input sequence leng
 parser.add_argument('--label_len', type=int, default=48, help='start token length')
 parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
 
-# DLinear
-parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
-# Formers 
-parser.add_argument('--embed_type', type=int, default=1, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
+# Common
 parser.add_argument('--enc_in', type=int, default=7, help='encoder input size') # DLinear with --individual, use this hyperparameter as the number of channels
 parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
 parser.add_argument('--c_out', type=int, default=7, help='output size')
+
+# DLinear
+parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
+
+# Formers 
+parser.add_argument('--embed_type', type=int, default=1, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
 parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
 parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
 parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
@@ -59,15 +62,15 @@ parser.add_argument('--output_attention', action='store_true', help='whether to 
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
 
 # NSTransformer
-parser.add_argument('--p_hidden_dims', type=int, nargs='+', help='hidden layer dimensions of projector (List)')
-parser.add_argument('--p_hidden_layers', type=int, default=1, help='number of hidden layers in projector')
+parser.add_argument('--p_hidden_dims', type=int, nargs='+', default=[64, 64], help='hidden layer dimensions of projector (List)')
+parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
 
-# DLinear
+# NBEATS
 parser.add_argument('--block_type', default='g', help='NBETAS block type: g for GenericBasis, s for SeasonityBasis block and t for TrendBasis')
 
 # optimization
-parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
-parser.add_argument('--itr', type=int, default=2, help='experiments times')
+parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
+parser.add_argument('--itr', type=int, default=1, help='experiments times')
 parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
 parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
 parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
