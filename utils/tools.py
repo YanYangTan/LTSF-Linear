@@ -107,3 +107,15 @@ def test_params_flop(model,x_shape):
         # print('Params:' + params)
         print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
         print('{:<30}  {:<8}'.format('Number of parameters: ', params))
+
+class TopkMSELoss(torch.nn.Module):
+    def __init__(self, topk) -> None:
+        super().__init__()
+        self.topk = topk
+        self.criterion = torch.nn.MSELoss(reduction='none')
+
+    def forward(self, output, label):
+        losses = self.criterion(output, label).mean(2).mean(1)
+        losses = torch.topk(losses, self.topk)[0]
+
+        return losses
