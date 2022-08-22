@@ -34,6 +34,7 @@ do
     --c_out 8 \
     --des 'Exp' \
     --itr 1 \
+    --learning_rate 0.001 \
     --train_epochs 1 >logs/LongForecasting/$model_name/'exchange_rate_'$pred_len.log
 
   python -u run_longExp.py \
@@ -55,6 +56,7 @@ do
       --dec_in 321 \
       --c_out 321 \
       --des 'Exp' \
+      --learning_rate 0.001 \
       --itr 1 >logs/LongForecasting/$model_name/'electricity_'$pred_len.log
 
   python -u run_longExp.py \
@@ -77,6 +79,7 @@ do
     --c_out 862 \
     --des 'Exp' \
     --itr 1 \
+    --learning_rate 0.001 \
     --train_epochs 3 >logs/LongForecasting/$model_name/'traffic_'$pred_len.log
 
   python -u run_longExp.py \
@@ -99,6 +102,7 @@ do
     --c_out 21 \
     --des 'Exp' \
     --itr 1 \
+    --learning_rate 0.001 \
     --train_epochs 2 >logs/LongForecasting/$model_name/'weather_'$pred_len.log
 
   python -u run_longExp.py \
@@ -120,6 +124,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
+      --learning_rate 0.001 \
       --itr 1  >logs/LongForecasting/$model_name/'Etth1_'$pred_len.log
   
   python -u run_longExp.py \
@@ -141,6 +146,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
+      --learning_rate 0.001 \
       --itr 1  >logs/LongForecasting/$model_name/'Etth2_'$pred_len.log
   
   python -u run_longExp.py \
@@ -162,6 +168,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
+      --learning_rate 0.001 \
       --itr 1  >logs/LongForecasting/$model_name/'Ettm1_'$pred_len.log
 
   python -u run_longExp.py \
@@ -183,6 +190,7 @@ do
       --dec_in 7 \
       --c_out 7 \
       --des 'Exp' \
+      --learning_rate 0.001 \
       --itr 1  >logs/LongForecasting/$model_name/'Ettm2_'$pred_len.log
 done
 done
@@ -210,6 +218,7 @@ do
     --dec_in 7 \
     --c_out 7 \
     --des 'Exp' \
+    --learning_rate 0.001 \
     --itr 1 >logs/LongForecasting/$model_name/'ili_'$pred_len.log
 done
 done
