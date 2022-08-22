@@ -111,8 +111,8 @@ class LevelLayer(nn.Module):
         out = rearrange(out, 'B T H D -> B T (H D)')
         return out
 
-class EncoderLayer(nn.Module):
 
+class EncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, c_out, pred_len, k, dim_feedforward=None, dropout=0.1,
                  activation='sigmoid', layer_norm_eps=1e-5):
         super().__init__()

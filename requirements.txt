@@ -2,4 +2,6 @@ numpy
 matplotlib
 pandas
 scikit-learn
+reformer_pytorch
+sympy
 torch==1.9.0

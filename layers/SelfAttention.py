@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 from math import sqrt
-from utils.masking import TriangularCausalMask, ProbMask
-import os
+from utils.masking import TriangularCausalMask
 
 
 class FullAttention(nn.Module):
@@ -39,7 +38,6 @@ class FullAttention(nn.Module):
             return (V.contiguous(), A)
         else:
             return (V.contiguous(), None)
-
 
 
 class AttentionLayer(nn.Module):
