@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers.Transformer_EncDec import Decoder, DecoderLayer, Encoder, EncoderLayer, ConvLayer
+from layers.Transformer_EncDec import Encoder, EncoderLayer, ConvLayer
 from layers.Reformer_Layer import ReformerLayer
 from layers.Embed import DataEmbedding
 import numpy as np
