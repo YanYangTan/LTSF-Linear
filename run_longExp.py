@@ -16,12 +16,7 @@ parser = argparse.ArgumentParser(description='Autoformer & Transformer family fo
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
 parser.add_argument('--model', type=str, required=True, default='Autoformer',
-                    help='model name, options: [Autoformer, Informer, Transformer, DLinear, NSTransformer, N_BEATS]')
-<<<<<<< HEAD
-=======
-parser.add_argument('--decoder', type=str, default='FC') # Pyraformer selection: [FC, attention]
->>>>>>> origin/dev
-
+                    help='model name, options: [Autoformer, Informer, Transformer, DLinear, NSTransformer, N_BEATS, ]')
 # data loader
 parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
 parser.add_argument('--root_path', type=str, default='./dataset/ETT-small/', help='root path of the data file')
@@ -32,8 +27,6 @@ parser.add_argument('--target', type=str, default='OT', help='target feature in 
 parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
-parser.add_argument('--predict_step', type=int, default=168) # Pyraformer
-parser.add_argument('--input_size', type=int, default=168)# Pyraformer
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -65,7 +58,7 @@ parser.add_argument('--dropout', type=float, default=0.05, help='dropout')
 parser.add_argument('--embed', type=str, default='timeF',
                     help='time features encoding, options:[timeF, fixed, learned]')
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
-parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
+parser.add_argument('--output_attention', action='store_true', help='whether to output attention in encoder') ##
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
 
 parser.add_argument('--std', type=float, default=0.2) #ETS 
@@ -76,11 +69,9 @@ parser.add_argument('--n_hashes', type=int, default=4, help='for Reformer')
 
 # Pyraformer parameters.
 parser.add_argument('--window_size', type=str, default='[4, 4, 4]') # The number of children of a parent node.
-parser.add_argument('--inner_size', type=int, default=3) # The number of ajacent nodes.
-parser.add_argument('-d_k', type=int, default=128)
-parser.add_argument('-d_v', type=int, default=128)
-parser.add_argument('-d_bottleneck', type=int, default=128)
-parser.add_argument('-n_layer', type=int, default=4)
+parser.add_argument('--d_k', type=int, default=128)
+parser.add_argument('--d_v', type=int, default=128)
+parser.add_argument('--d_bottleneck', type=int, default=128)
 
 # CSCM structure. selection: [Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct] (Pyraformer)
 parser.add_argument('--CSCM', type=str, default='Bottleneck_Construct')

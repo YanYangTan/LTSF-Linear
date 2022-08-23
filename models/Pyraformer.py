@@ -1,6 +1,7 @@
 from distutils.command.config import config
 import torch
 import torch.nn as nn
+from layers.Pyraformer_Layers import Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct
 from layers.Pyraformer_Layers import EncoderLayer, Predictor
 from layers.Pyraformer_Layers import get_mask, refer_points
 from layers.Embed import DataEmbedding
@@ -12,6 +13,7 @@ class Model(nn.Module):
 
     def __init__(self, configs):
         super().__init__()
+        self.pred_len = configs.pred_len
 
         if torch.cuda.is_available():
             device = torch.device("cuda")
@@ -20,7 +22,7 @@ class Model(nn.Module):
             
         self.enc_embedding = DataEmbedding(configs.enc_in, configs.d_model, configs.dropout)
 
-        self.mask, self.all_size = get_mask(configs.seq_len+1, configs.window_size, configs.inner_size, device)
+        self.mask, self.all_size = get_mask(configs.seq_len, configs.window_size, configs.factor, device)
         self.indexes = refer_points(self.all_size, configs.window_size, device)
 
         self.layers = nn.ModuleList([
@@ -33,7 +35,8 @@ class Model(nn.Module):
         self.predictor = Predictor(4 * configs.d_model, configs.pred_len * configs.enc_in)
 
 
-    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
+    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
+            enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         """
         """
         seq_enc = self.enc_embedding(x_enc, x_mark_enc)

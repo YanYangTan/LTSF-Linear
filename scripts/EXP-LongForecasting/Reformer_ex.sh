@@ -25,8 +25,7 @@ do
     --seq_len 96 \
     --label_len 48 \
     --pred_len $pred_len \
-    --e_layers 2 \
-    --d_layers 1 \
+    --e_layers 3 \
     --factor 3 \
     --enc_in 8 \
     --dec_in 8 \
@@ -54,8 +53,7 @@ do
     --seq_len 36 \
     --label_len 18 \
     --pred_len $pred_len \
-    --e_layers 2 \
-    --d_layers 1 \
+    --e_layers 3 \
     --factor 3 \
     --enc_in 7 \
     --dec_in 7 \
