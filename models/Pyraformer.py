@@ -1,8 +1,7 @@
 from distutils.command.config import config
 import torch
 import torch.nn as nn
-from layers.Pyraformer_Layers import Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct
-from layers.Pyraformer_Layers import EncoderLayer, Predictor
+from layers.Pyraformer_Layers import EncoderLayer, Predictor, Bottleneck_Construct
 from layers.Pyraformer_Layers import get_mask, refer_points
 from layers.Embed import DataEmbedding
 

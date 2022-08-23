@@ -58,7 +58,7 @@ class AttentionLayer(nn.Module):
         self.n_heads = n_heads
         self.mix = mix
 
-    def forward(self, queries, keys, values, attn_mask):
+    def forward(self, queries, keys, values, attn_mask, tau=None, delta=None):
         B, L, _ = queries.shape
         _, S, _ = keys.shape
         H = self.n_heads
@@ -71,7 +71,8 @@ class AttentionLayer(nn.Module):
             queries,
             keys,
             values,
-            attn_mask
+            attn_mask,
+            tau, delta
         )
         if self.mix:
             out = out.transpose(2, 1).contiguous()

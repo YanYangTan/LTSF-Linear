@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers.NSTransformer_EncDec import NSDecoder, NSDecoderLayer, NSEncoder, NSEncoderLayer
-from layers.DSAttention import DSAttention, NSAttentionLayer
+from layers.Autoformer_EncDec import Decoder, DecoderLayer, Encoder, EncoderLayer
+from layers.DSAttention import DSAttention
+from layers.SelfAttention import AttentionLayer
 from layers.Embed import DataEmbedding,DataEmbedding_wo_pos,DataEmbedding_wo_temp,DataEmbedding_wo_pos_temp
 import numpy as np
 
@@ -75,10 +76,10 @@ class Model(nn.Module):
             self.dec_embedding = DataEmbedding_wo_pos_temp(configs.dec_in, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
         # Encoder
-        self.encoder = NSEncoder(
+        self.encoder = Encoder(
             [
-                NSEncoderLayer(
-                    NSAttentionLayer(
+                EncoderLayer(
+                    AttentionLayer(
                         DSAttention(False, configs.factor, attention_dropout=configs.dropout,
                                       output_attention=configs.output_attention), configs.d_model, configs.n_heads),
                     configs.d_model,
@@ -90,16 +91,17 @@ class Model(nn.Module):
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
         # Decoder
-        self.decoder = NSDecoder(
+        self.decoder = Decoder(
             [
-                NSDecoderLayer(
-                    NSAttentionLayer(
+                DecoderLayer(
+                    AttentionLayer(
                         DSAttention(True, configs.factor, attention_dropout=configs.dropout, output_attention=False),
                         configs.d_model, configs.n_heads),
-                    NSAttentionLayer(
+                    AttentionLayer(
                         DSAttention(False, configs.factor, attention_dropout=configs.dropout, output_attention=False),
                         configs.d_model, configs.n_heads),
                     configs.d_model,
+                    configs.c_out,
                     configs.d_ff,
                     dropout=configs.dropout,
                     activation=configs.activation,
