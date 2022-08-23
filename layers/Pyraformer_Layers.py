@@ -168,22 +168,13 @@ class EncoderLayer(nn.Module):
 
     def __init__(self, d_model, d_inner, n_head, d_k, d_v, dropout=0.1, normalize_before=True, use_tvm=False, q_k_mask=None, k_q_mask=None):
         super(EncoderLayer, self).__init__()
-        self.use_tvm = use_tvm
-        if use_tvm:
-            from .PAM_TVM import PyramidalAttention
-            self.slf_attn = PyramidalAttention(n_head, d_model, d_k, d_v, dropout=dropout, normalize_before=normalize_before, q_k_mask=q_k_mask, k_q_mask=k_q_mask)
-        else:
-            self.slf_attn = MultiHeadAttention(n_head, d_model, d_k, d_v, dropout=dropout, normalize_before=normalize_before)
+        self.slf_attn = MultiHeadAttention(n_head, d_model, d_k, d_v, dropout=dropout, normalize_before=normalize_before)
 
         self.pos_ffn = PositionwiseFeedForward(
             d_model, d_inner, dropout=dropout, normalize_before=normalize_before)
 
     def forward(self, enc_input, slf_attn_mask=None):
-        if self.use_tvm:
-            enc_output = self.slf_attn(enc_input)
-            enc_slf_attn = None
-        else:
-            enc_output, enc_slf_attn = self.slf_attn(enc_input, enc_input, enc_input, mask=slf_attn_mask)
+        enc_output, enc_slf_attn = self.slf_attn(enc_input, enc_input, enc_input, mask=slf_attn_mask)
 
         enc_output = self.pos_ffn(enc_output)
 
@@ -362,7 +353,6 @@ class AvgPooling_Construct(nn.Module):
 
 
 class Predictor(nn.Module):
-
     def __init__(self, dim, num_types):
         super().__init__()
 
@@ -405,4 +395,3 @@ class Decoder(nn.Module):
         dec_enc, _ = self.layers[1](dec_enc, refer_enc, refer_enc, slf_attn_mask=mask)
 
         return dec_enc
-

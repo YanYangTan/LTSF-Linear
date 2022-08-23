@@ -1,7 +1,7 @@
 import argparse
 import os
 import torch
-from exp.exp_main import Exp_Main
+from exp.exp_reshape import Exp_Reshape
 import random
 import numpy as np
 
@@ -17,7 +17,7 @@ parser.add_argument('--is_training', type=int, required=True, default=1, help='s
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
 parser.add_argument('--model', type=str, required=True, default='Autoformer',
                     help='model name, options: [Autoformer, Informer, Transformer, DLinear, NSTransformer, N_BEATS]')
-# parser.add_argument('--decoder', type=str, default='FC') # Pyraformer selection: [FC, attention]
+parser.add_argument('--decoder', type=str, default='FC') # Pyraformer selection: [FC, attention]
 
 # data loader
 parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
@@ -29,8 +29,8 @@ parser.add_argument('--target', type=str, default='OT', help='target feature in 
 parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
-# parser.add_argument('--predict_step', type=int, default=168) # Pyraformer
-# parser.add_argument('--input_size', type=int, default=168)# Pyraformer
+parser.add_argument('--predict_step', type=int, default=168) # Pyraformer
+parser.add_argument('--input_size', type=int, default=168)# Pyraformer
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -42,8 +42,6 @@ parser.add_argument('--enc_in', type=int, default=7, help='encoder input size') 
 parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
 parser.add_argument('--c_out', type=int, default=7, help='output size')
 
-# DLinear
-parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
 # Formers 
 parser.add_argument('--bucket_size', type=int, default=4, help='for Reformer')#Reformer
 parser.add_argument('--n_hashes', type=int, default=4, help='for Reformer')
@@ -65,47 +63,16 @@ parser.add_argument('--embed', type=str, default='timeF',
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
-parser.add_argument('--std', type=float, default=0.2)#ETS
-parser.add_argument('--dilations',type=int,default=[1,2,4,8,16])
+
+#LSTNet
+parser.add_argument('--kernel_size', type=int, default=5)
+parser.add_argument('--skip', type=int, default=24)
+parser.add_argument('--high_way', type=int, default=24)
+
 parser.add_argument('--mix', default=True) # SparseTransformer
 
-#StemGNN
-parser.add_argument('--stack_cnt', type=int, default=2, help='')
-parser.add_argument('--multi_layer', type=int, default=5, help='')
-parser.add_argument('--leaky_rate', type=float, default=0.2, help='')
-
-# Pyraformer parameters.
-parser.add_argument('--window_size', type=str, default='[4, 4, 4]') # The number of children of a parent node.
-# parser.add_argument('--inner_size', type=int, default=3) # The number of ajacent nodes.
-parser.add_argument('--d_inner_hid', type=int, default=512)
-parser.add_argument('--d_k', type=int, default=128)
-parser.add_argument('--d_v', type=int, default=128)
-parser.add_argument('--d_bottleneck', type=int, default=128)
 parser.add_argument('--n_layer', type=int, default=3)
 
-
-# CSCM structure. selection: [Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct] (Pyraformer)
-parser.add_argument('--CSCM', type=str, default='Bottleneck_Construct')
-parser.add_argument('--truncate', action='store_true', default=False) # Whether to remove coarse-scale nodes from the attention structure
-parser.add_argument('--use_tvm', action='store_true', default=False) # Whether to use TVM.
-
-# supplementary config for FEDformer model
-parser.add_argument('--version', type=str, default='Fourier',
-                    help='for FEDformer, there are two versions to choose, options: [Fourier, Wavelets]')
-parser.add_argument('--mode_select', type=str, default='random',
-                    help='for FEDformer, there are two mode selection method, options: [random, low]')
-parser.add_argument('--modes', type=int, default=64, help='modes to be selected random 64')
-parser.add_argument('--L', type=int, default=3, help='ignore level')
-parser.add_argument('--base', type=str, default='legendre', help='mwt base')
-parser.add_argument('--cross_activation', type=str, default='tanh',
-                    help='mwt cross atention activation function tanh or softmax')
-
-# NSTransformer
-parser.add_argument('--p_hidden_dims', type=int, nargs='+', default=[64, 64], help='hidden layer dimensions of projector (List)')
-parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
-
-# DLinear
-parser.add_argument('--block_type', default='g', help='NBETAS block type: g for GenericBasis, s for SeasonityBasis block and t for TrendBasis')
 
 # optimization
 parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
@@ -129,12 +96,6 @@ parser.add_argument('--test_flop', action='store_true', default=False, help='See
 args = parser.parse_args()
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
-#Pyraformer
-if torch.cuda.is_available():
-    args.device = torch.device("cuda")
-else:
-    args.device = torch.device('cpu')
-args.window_size = eval(args.window_size)
 
 if args.use_gpu and args.use_multi_gpu:
     args.dvices = args.devices.replace(' ', '')
@@ -145,7 +106,7 @@ if args.use_gpu and args.use_multi_gpu:
 print('Args in experiment:')
 print(args)
 
-Exp = Exp_Main
+Exp = Exp_Reshape
 
 if args.is_training:
     for ii in range(args.itr):
