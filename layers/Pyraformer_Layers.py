@@ -17,7 +17,6 @@ class EncoderLayer(nn.Module):
 
     def forward(self, enc_input, slf_attn_mask=None):
         enc_output, enc_slf_attn = self.slf_attn(enc_input, enc_input, enc_input, mask=slf_attn_mask)
-
         enc_output = self.pos_ffn(enc_output)
 
         return enc_output, enc_slf_attn
@@ -173,8 +172,4 @@ class AvgPooling_Construct(nn.Module):
         all_inputs = self.norm(all_inputs)
 
         return all_inputs
-
-
-
-
 

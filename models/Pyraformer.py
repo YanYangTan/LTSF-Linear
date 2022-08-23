@@ -1,4 +1,3 @@
-from distutils.command.config import config
 import torch, math
 import torch.nn as nn
 from layers.Embed import DataEmbedding, DataEmbedding_wo_pos,DataEmbedding_wo_pos_temp,DataEmbedding_wo_temp
@@ -162,7 +161,6 @@ def get_k_q(q_k_mask):
     return k_q_mask
 
 
-
 class Model(nn.Module):
     """ A sequence to sequence model with attention mechanism. """
 
@@ -174,7 +172,7 @@ class Model(nn.Module):
             device = torch.device("cuda")
         else:
             device = torch.device('cpu')
-        
+            
         # Embedding
         # The series-wise connection inherently contains the sequential information.
         # Thus, we can discard the position embedding of transformers.
@@ -230,7 +228,6 @@ class Model(nn.Module):
 
         mask = self.mask.repeat(len(seq_enc), 1, 1).to(x_enc.device)
         seq_enc = self.conv_layers(seq_enc)
-
         for i in range(len(self.layers)):
             seq_enc, _ = self.layers[i](seq_enc, mask)
 
@@ -238,9 +235,9 @@ class Model(nn.Module):
         indexes = indexes.view(seq_enc.size(0), -1, seq_enc.size(2))
         all_enc = torch.gather(seq_enc, 1, indexes)
         seq_enc = all_enc.view(seq_enc.size(0), self.all_size[0], -1)
-
         enc_output = seq_enc[:, -1, :]
         enc_output = self.projection(enc_output).view(enc_output.size(0), self.pred_len, -1)
 
         return enc_output
+
 

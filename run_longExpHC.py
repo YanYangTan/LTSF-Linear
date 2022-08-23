@@ -1,7 +1,7 @@
 import argparse
 import os
 import torch
-from exp.exp_main import Exp_Main
+from exp.exp_hiddencell import Exp_HiddenCell
 import random
 import numpy as np
 
@@ -15,7 +15,10 @@ parser = argparse.ArgumentParser(description='Autoformer & Transformer family fo
 # basic config
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
-parser.add_argument('--model', type=str, required=True, default='Autoformer', help='model name, options: [Autoformer, Informer, Transformer, DLinear, NSTransformer, N_BEATS, ]')
+parser.add_argument('--model', type=str, required=True, default='Autoformer',
+                    help='model name, options: [Autoformer, Informer, Transformer, DLinear, NSTransformer, N_BEATS]')
+parser.add_argument('--decoder', type=str, default='FC') # Pyraformer selection: [FC, attention]
+
 # data loader
 parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
 parser.add_argument('--root_path', type=str, default='./dataset/ETT-small/', help='root path of the data file')
@@ -26,7 +29,8 @@ parser.add_argument('--target', type=str, default='OT', help='target feature in 
 parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
-
+parser.add_argument('--predict_step', type=int, default=168) # Pyraformer
+parser.add_argument('--input_size', type=int, default=168)# Pyraformer
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -40,8 +44,9 @@ parser.add_argument('--c_out', type=int, default=7, help='output size')
 
 # DLinear
 parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
-
 # Formers 
+parser.add_argument('--bucket_size', type=int, default=4, help='for Reformer')#Reformer
+parser.add_argument('--n_hashes', type=int, default=4, help='for Reformer')
 parser.add_argument('--embed_type', type=int, default=1, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
 parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
 parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
@@ -58,41 +63,13 @@ parser.add_argument('--dropout', type=float, default=0.05, help='dropout')
 parser.add_argument('--embed', type=str, default='timeF',
                     help='time features encoding, options:[timeF, fixed, learned]')
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
-parser.add_argument('--output_attention', action='store_true', help='whether to output attention in encoder') ##
+parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
 parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
-parser.add_argument('--std', type=float, default=0.2) #ETS 
 
-# Reformer
-parser.add_argument('--bucket_size', type=int, default=4, help='for Reformer')#Reformer
-parser.add_argument('--n_hashes', type=int, default=4, help='for Reformer')
+parser.add_argument('--mix', default=True) # SparseTransformer
 
-# Pyraformer parameters.
-parser.add_argument('--window_size', type=str, default='[4, 4, 4]') # The number of children of a parent node.
-parser.add_argument('--d_k', type=int, default=128)
-parser.add_argument('--d_v', type=int, default=128)
-parser.add_argument('--d_bottleneck', type=int, default=128)
+parser.add_argument('--n_layer', type=int, default=3)
 
-
-# CSCM structure. selection: [Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct] (Pyraformer)
-parser.add_argument('--CSCM', type=str, default='Bottleneck_Construct')
-
-# supplementary config for FEDformer model
-parser.add_argument('--version', type=str, default='Fourier',
-                    help='for FEDformer, there are two versions to choose, options: [Fourier, Wavelets]')
-parser.add_argument('--mode_select', type=str, default='random',
-                    help='for FEDformer, there are two mode selection method, options: [random, low]')
-parser.add_argument('--modes', type=int, default=64, help='modes to be selected random 64')
-parser.add_argument('--L', type=int, default=3, help='ignore level')
-parser.add_argument('--base', type=str, default='legendre', help='mwt base')
-parser.add_argument('--cross_activation', type=str, default='tanh',
-                    help='mwt cross atention activation function tanh or softmax')
-
-# NSTransformer
-parser.add_argument('--p_hidden_dims', type=int, nargs='+', default=[64, 64], help='hidden layer dimensions of projector (List)')
-parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
-
-# NBEATS
-parser.add_argument('--block_type', default='g', help='NBETAS block type: g for GenericBasis, s for SeasonityBasis block and t for TrendBasis')
 
 # optimization
 parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
@@ -116,12 +93,6 @@ parser.add_argument('--test_flop', action='store_true', default=False, help='See
 args = parser.parse_args()
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
-#Pyraformer
-if torch.cuda.is_available():
-    args.device = torch.device("cuda")
-else:
-    args.device = torch.device('cpu')
-args.window_size = eval(args.window_size)
 
 if args.use_gpu and args.use_multi_gpu:
     args.dvices = args.devices.replace(' ', '')
@@ -132,7 +103,7 @@ if args.use_gpu and args.use_multi_gpu:
 print('Args in experiment:')
 print(args)
 
-Exp = Exp_Main
+Exp = Exp_HiddenCell
 
 if args.is_training:
     for ii in range(args.itr):

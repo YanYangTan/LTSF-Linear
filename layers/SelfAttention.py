@@ -38,7 +38,7 @@ class FullAttention(nn.Module):
 
 class AttentionLayer(nn.Module):
     def __init__(self, attention, d_model, n_heads, d_keys=None,
-                 d_values=None):
+                 d_values=None, mix=False):
         super(AttentionLayer, self).__init__()
 
         d_keys = d_keys or (d_model // n_heads)
@@ -50,6 +50,7 @@ class AttentionLayer(nn.Module):
         self.value_projection = nn.Linear(d_model, d_values * n_heads)
         self.out_projection = nn.Linear(d_values * n_heads, d_model)
         self.n_heads = n_heads
+        self.mix = mix
 
     def forward(self, queries, keys, values, attn_mask):
         B, L, _ = queries.shape
@@ -66,6 +67,61 @@ class AttentionLayer(nn.Module):
             values,
             attn_mask
         )
+        if self.mix:
+            out = out.transpose(2, 1).contiguous()
         out = out.view(B, L, -1)
 
         return self.out_projection(out), attn
+
+# class causal_convolution(nn.Module):
+#     def __init__(self, c_in, c_out, ks=5, stride=1, dilation=1):
+#         super(causal_convolution, self).__init__()
+#         self.chomp_size = (ks - 1) * dilation
+#         self.conv1 = nn.Conv1d(c_in, c_out, ks,
+#                                stride=stride, padding=(ks - 1) * dilation, dilation=dilation)
+
+#     def forward(self, x):
+#         x = self.conv1(x)
+#         return x[:, :, :-self.chomp_size].contiguous()
+
+
+# class AttentionLayer(nn.Module):
+#     def __init__(self, attention, d_model, n_heads,
+#                  d_keys=None, d_values=None, mix=False):
+#         super(AttentionLayer, self).__init__()
+
+#         d_keys = d_keys or (d_model // n_heads)
+#         d_values = d_values or (d_model // n_heads)
+
+#         self.inner_attention = attention
+#         self.query_projection = nn.Linear(d_model, d_keys * n_heads)
+#         self.key_projection = nn.Linear(d_model, d_keys * n_heads)
+
+#         self.key_causal_convolution = causal_convolution(d_model, d_keys * n_heads)
+#         self.query_causal_convolution = causal_convolution(d_model, d_keys * n_heads)
+#         self.value_projection = nn.Linear(d_model, d_values * n_heads)
+#         self.out_projection = nn.Linear(d_values * n_heads, d_model)
+#         self.n_heads = n_heads
+#         self.mix = mix
+
+#     def forward(self, queries, keys, values, attn_mask):
+#         B, L, _ = queries.shape
+#         _, S, _ = keys.shape
+#         H = self.n_heads
+#         queries = self.query_causal_convolution(queries.permute(0, 2, 1)).view(B, L, H, -1)
+
+#         keys = self.key_causal_convolution(keys.permute(0, 2, 1)).view(B, S, H, -1)
+
+#         values = self.value_projection(values).view(B, S, H, -1)
+
+#         out, attn = self.inner_attention(
+#             queries,
+#             keys,
+#             values,
+#             attn_mask
+#         )
+#         if self.mix:
+#             out = out.transpose(2, 1).contiguous()
+#         out = out.view(B, L, -1)
+
+#         return self.out_projection(out), attn

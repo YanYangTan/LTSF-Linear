@@ -1,9 +1,9 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import Informer, Autoformer, Transformer,Reformer,FEDformer,ETSformer,Pyraformer, NSTransformer,SparseTransformer, DLinear, N_BEATS,DeepTCN,LSTM,StemGNN
+from models import DeepAR
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
-
+from utils.loss import gaussian_log_likehood
 import numpy as np
 import torch
 import torch.nn as nn
@@ -18,26 +18,13 @@ import numpy as np
 
 warnings.filterwarnings('ignore')
 
-class Exp_Main(Exp_Basic):
+class Exp_HiddenCell(Exp_Basic):
     def __init__(self, args):
-        super(Exp_Main, self).__init__(args)
+        super(Exp_HiddenCell, self).__init__(args)
 
     def _build_model(self):
         model_dict = {
-            'Autoformer': Autoformer,
-            'Transformer': Transformer,
-            'Informer': Informer,
-            'Reformer': Reformer,
-            'FEDformer': FEDformer,
-            'ETSformer': ETSformer,
-            'Pyraformer': Pyraformer,
-            'SparseTransformer':SparseTransformer,
-            'DLinear': DLinear,
-            'DeepTCN':DeepTCN,
-            'LSTM':LSTM,
-            'StemGNN':StemGNN,
-            'NSTransformer': NSTransformer,
-            'N_BEATS': N_BEATS
+            'DeepAR':DeepAR
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -45,7 +32,7 @@ class Exp_Main(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
 
         self.modelShortY_list=[
-            'DeepTCN','LSTM','SparseTransformer','StemGNN'
+            'DeepAR'
         ]
         return model
 
@@ -61,48 +48,47 @@ class Exp_Main(Exp_Basic):
         return model_optim
 
     def _select_criterion(self):
-        criterion = nn.MSELoss()
+        criterion = gaussian_log_likehood
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
-        total_loss = []
         self.model.eval()
-        with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
+        val_loss = []
+        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            batch_x = batch_x.float().to(self.device)
+            batch_y = batch_y.float()
 
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+            batch_x_mark = batch_x_mark.float().to(self.device)
+            batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            loss = torch.zeros(1, device=self.device)
+            hidden = self.init_hidden(batch_x.shape[0])
+            cell = self.init_cell(batch_x.shape[0])
+            for t in range(self.args.seq_len - 1):
+                if (t == 0):
+                    zeros_ = torch.zeros_like(batch_x[:, 0, :]).to(self.device)
+                    mu, sigma, hidden, cell = self.model(
+                        torch.cat([zeros_, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(), batch_x_mark[:, t:t + 1, :],
+                        hidden, cell)
+
                 else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                    else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    mu, sigma, hidden, cell = self.model(torch.cat([mu, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(),
+                                                         batch_x_mark[:, t:t + 1, :], hidden,
+                                                         cell)
 
-                pred = outputs.detach().cpu()
-                true = batch_y.detach().cpu()
+                loss += criterion(mu, sigma, batch_x[:, t + 1, :])
 
-                loss = criterion(pred, true)
-
-                total_loss.append(loss)
-        total_loss = np.average(total_loss)
+            val_loss.append(loss.item())
+        total_loss = np.average(val_loss)
         self.model.train()
         return total_loss
+
+
+    def init_hidden(self, input_size, layers=3, hidden_dim=512):
+        return torch.zeros(layers, input_size, hidden_dim, device=self.device)
+
+    def init_cell(self, input_size, layers=3, hidden_dim=512):
+        return torch.zeros(layers, input_size, hidden_dim, device=self.device)
 
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
@@ -139,34 +125,26 @@ class Exp_Main(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                loss = torch.zeros(1, device=self.device)
+                hidden = self.init_hidden(batch_x.shape[0])
+                cell = self.init_cell(batch_x.shape[0])
 
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                for t in range(self.args.seq_len- 1):
+                    # if z_t is missing, replace it by output mu from the last time step
+                    if (t == 0):
+                        zeros_ = torch.zeros_like(batch_x[:, 0, :]).to(self.device)
+                        mu, sigma, hidden, cell = self.model(
+                            torch.cat([zeros_, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(), batch_x_mark[:, t:t + 1, :],
+                            hidden, cell)
 
-                        f_dim = -1 if self.args.features == 'MS' else 0
-                        outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                        loss = criterion(outputs, batch_y)
-                        train_loss.append(loss.item())
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                     else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
-                    # print(outputs.shape,batch_y.shape)
-                    f_dim = -1 if self.args.features == 'MS' else 0
-                    outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                    loss = criterion(outputs, batch_y)
-                    train_loss.append(loss.item())
+                        mu, sigma, hidden, cell = self.model(
+                            torch.cat([mu, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(), batch_x_mark[:, t:t + 1, :],
+                            hidden,
+                            cell)
+
+                    loss += criterion(mu, sigma, batch_x[:, t + 1, :])
+                train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
@@ -182,8 +160,6 @@ class Exp_Main(Exp_Basic):
                     scaler.update()
                 else:
                     loss.backward()
-                    if self.args.model is 'ETSformer':
-                        torch.nn.utils.clip_grad_norm(self.model.parameters(), 1.0)
                     model_optim.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
@@ -228,28 +204,44 @@ class Exp_Main(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                hidden = self.init_hidden(batch_x.shape[0])
+                cell = self.init_cell(batch_x.shape[0])
+                for t in range(self.args.seq_len - 1):
+                    if (t == 0):
+                        zeros_ = torch.zeros_like(batch_x[:, 0, :]).to(self.device)
+                        mu, sigma, hidden, cell = self.model(
+                            torch.cat([zeros_, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(),
+                            batch_x_mark[:, t:t + 1, :],
+                            hidden, cell)
 
                     else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        mu, sigma, hidden, cell = self.model(
+                            torch.cat([mu, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(),
+                            batch_x_mark[:, t:t + 1, :], hidden,
+                            cell)
+                gaussian = torch.distributions.normal.Normal(mu, sigma)
+                pred = gaussian.sample()  # not scaled
+                samples = torch.zeros(batch_x.shape[0], self.args.pred_len, batch_x.shape[-1],
+                                      device=self.device)
+                mus = torch.zeros(batch_x.shape[0], self.args.pred_len, batch_x.shape[-1],
+                                  device=self.device)
+                sigmas = torch.zeros(batch_x.shape[0], self.args.pred_len, batch_x.shape[-1],
+                                     device=self.device)
+                samples[:, 0, :] = pred
+                mus[:, 0, :] = mu
+                sigmas[:, 0, :] = sigma
+                for t in range(self.args.pred_len - 1):
+                    mu, sigma, hidden, cell = self.model(
+                        torch.cat([mu, pred], dim=1).unsqueeze_(1).clone(),
+                        batch_x_mark[:, t:t + 1, :], hidden,
+                        cell)
+                    gaussian = torch.distributions.normal.Normal(mu, sigma)
+                    pred = gaussian.sample()  # not scaled
+                    samples[:, t + 1, :] = pred
+                    mus[:, t + 1, :] = mu
+                    sigmas[:, t + 1, :] = sigma
 
-                f_dim = -1 if self.args.features == 'MS' else 0
-                # print(outputs.shape,batch_y.shape)
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                outputs = outputs.detach().cpu().numpy()
+                outputs = samples.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
 
                 pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
@@ -257,7 +249,6 @@ class Exp_Main(Exp_Basic):
 
                 preds.append(pred)
                 trues.append(true)
-                inputx.append(batch_x.detach().cpu().numpy())
                 if i % 20 == 0:
                     input = batch_x.detach().cpu().numpy()
                     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
@@ -269,11 +260,11 @@ class Exp_Main(Exp_Basic):
             exit()
         preds = np.array(preds)
         trues = np.array(trues)
-        inputx = np.array(inputx)
 
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
-        inputx = inputx.reshape(-1, inputx.shape[-2], inputx.shape[-1])
+        # preds = np.concatenate(preds, axis=0)
+        # trues = np.concatenate(trues, axis=0)
 
         # result save
         folder_path = './results/' + setting + '/'
@@ -309,28 +300,48 @@ class Exp_Main(Exp_Basic):
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[2]]).float().to(batch_y.device)
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                    else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                pred = outputs.detach().cpu().numpy()  # .squeeze()
-                preds.append(pred)
+                hidden = self.init_hidden(batch_x.shape[0])
+                cell = self.init_cell(batch_x.shape[0])
+                for t in range(self.args.seq_len - 1):
 
+                    if (t == 0):
+                        zeros_ = torch.zeros_like(batch_x[:, 0, :]).to(self.device)
+                        mu, sigma, hidden, cell = self.model(
+                            torch.cat([zeros_, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(),
+                            batch_x_mark[:, t:t + 1, :],
+                            hidden, cell)
+
+                    else:
+                        mu, sigma, hidden, cell = self.model(
+                            torch.cat([mu, batch_x[:, t, :]], dim=1).unsqueeze_(1).clone(),
+                            batch_x_mark[:, t:t + 1, :], hidden,
+                            cell)
+
+                gaussian = torch.distributions.normal.Normal(mu, sigma)
+                pred = gaussian.sample()  # not scaled
+                samples = torch.zeros(batch_x.shape[0], self.args.pred_len, batch_x.shape[-1],
+                                      device=self.device)
+                mus = torch.zeros(batch_x.shape[0], self.args.pred_len, batch_x.shape[-1],
+                                  device=self.device)
+                sigmas = torch.zeros(batch_x.shape[0], self.args.pred_len, batch_x.shape[-1],
+                                     device=self.device)
+                samples[:, 0, :] = pred
+                mus[:, 0, :] = mu
+                sigmas[:, 0, :] = sigma
+                for t in range(self.args.pred_len - 1):
+                    mu, sigma, hidden, cell = self.model(
+                        torch.cat([mu, pred], dim=1).unsqueeze_(1).clone(),
+                        batch_y_mark[:, t:t + 1, :], hidden,
+                        cell)
+                    gaussian = torch.distributions.normal.Normal(mu, sigma)
+                    pred = gaussian.sample()  # not scaled
+                    samples[:, t + 1, :] = pred
+                    mus[:, t + 1, :] = mu
+                    sigmas[:, t + 1, :] = sigma
+                preds.append(samples[0].detach().cpu().numpy())
         preds = np.array(preds)
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
 

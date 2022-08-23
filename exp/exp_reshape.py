@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import Informer, Autoformer, Transformer,Reformer,FEDformer,ETSformer,Pyraformer, NSTransformer,SparseTransformer, DLinear, N_BEATS,DeepTCN,LSTM,StemGNN
+from models import LSTNet
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -18,26 +18,13 @@ import numpy as np
 
 warnings.filterwarnings('ignore')
 
-class Exp_Main(Exp_Basic):
+class Exp_Reshape(Exp_Basic):
     def __init__(self, args):
-        super(Exp_Main, self).__init__(args)
+        super(Exp_Reshape, self).__init__(args)
 
     def _build_model(self):
         model_dict = {
-            'Autoformer': Autoformer,
-            'Transformer': Transformer,
-            'Informer': Informer,
-            'Reformer': Reformer,
-            'FEDformer': FEDformer,
-            'ETSformer': ETSformer,
-            'Pyraformer': Pyraformer,
-            'SparseTransformer':SparseTransformer,
-            'DLinear': DLinear,
-            'DeepTCN':DeepTCN,
-            'LSTM':LSTM,
-            'StemGNN':StemGNN,
-            'NSTransformer': NSTransformer,
-            'N_BEATS': N_BEATS
+            'LSTNet': LSTNet
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -45,7 +32,7 @@ class Exp_Main(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
 
         self.modelShortY_list=[
-            'DeepTCN','LSTM','SparseTransformer','StemGNN'
+            'LSTNet'
         ]
         return model
 
@@ -75,29 +62,18 @@ class Exp_Main(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                forecasts = torch.zeros(batch_x.shape[0], 1, batch_x.shape[-1]).cuda()
+                loss = torch.zeros(1, device=self.device)
+                for i in range(self.args.pred_len):
+
+                    if (i <= self.args.seq_len):
+                        forecast = self.model(torch.cat([batch_x[:, i:, :], forecasts[:, 1:i + 1, :]], dim=1).cuda(),
+                                            torch.cat([batch_x_mark[:, i:, :], batch_y_mark[:, :i, :]], dim=1).cuda())
                     else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-
-                pred = outputs.detach().cpu()
-                true = batch_y.detach().cpu()
-
-                loss = criterion(pred, true)
+                        forecast = self.model(forecasts[:, 1 + i - self.args.seq_len:i + 1, :],
+                                            batch_y_mark[:, i - self.args.seq_len:i, :])
+                    loss += criterion(batch_y[:, i, :], forecast[:, 0, :])
+                    forecasts = torch.cat([forecasts, forecast], dim=1)
 
                 total_loss.append(loss)
         total_loss = np.average(total_loss)
@@ -139,34 +115,18 @@ class Exp_Main(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                forecasts = torch.zeros(batch_x.shape[0], 1, batch_x.shape[-1]).cuda()
+                loss = torch.zeros(1, device=self.device)
+                for i in range(self.args.pred_len):
 
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-                        f_dim = -1 if self.args.features == 'MS' else 0
-                        outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                        loss = criterion(outputs, batch_y)
-                        train_loss.append(loss.item())
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                    if (i <= self.args.seq_len):
+                        forecast = self.model(torch.cat([batch_x[:, i:, :], forecasts[:, 1:i + 1, :]], dim=1).cuda(),
+                                            torch.cat([batch_x_mark[:, i:, :], batch_y_mark[:, :i, :]], dim=1).cuda())
                     else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
-                    # print(outputs.shape,batch_y.shape)
-                    f_dim = -1 if self.args.features == 'MS' else 0
-                    outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                    loss = criterion(outputs, batch_y)
-                    train_loss.append(loss.item())
+                        forecast = self.model(forecasts[:, 1 + i - self.args.seq_len:i + 1, :],
+                                            batch_y_mark[:, i - self.args.seq_len:i, :])
+                    loss += criterion(batch_y[:, i, :], forecast[:, 0, :])
+                    forecasts = torch.cat([forecasts, forecast], dim=1)
 
                 if (i + 1) % 100 == 0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
@@ -182,8 +142,6 @@ class Exp_Main(Exp_Basic):
                     scaler.update()
                 else:
                     loss.backward()
-                    if self.args.model is 'ETSformer':
-                        torch.nn.utils.clip_grad_norm(self.model.parameters(), 1.0)
                     model_optim.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
@@ -228,28 +186,20 @@ class Exp_Main(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                forecasts = torch.zeros(batch_x.shape[0], 1, batch_x.shape[-1]).cuda()
+                loss = torch.zeros(1, device=self.device)
+                for i in range(self.args.pred_len):
 
+                    if (i <= self.args.seq_len):
+                        forecast = self.model(torch.cat([batch_x[:, i:, :], forecasts[:, 1:i + 1, :]], dim=1).cuda(),
+                                            torch.cat([batch_x_mark[:, i:, :], batch_y_mark[:, :i, :]], dim=1).cuda())
                     else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-                f_dim = -1 if self.args.features == 'MS' else 0
-                # print(outputs.shape,batch_y.shape)
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                outputs = outputs.detach().cpu().numpy()
+                        forecast = self.model(forecasts[:, 1 + i - self.args.seq_len:i + 1, :],
+                                            batch_y_mark[:, i - self.args.seq_len:i, :])
+                    loss += criterion(batch_y[:, i, :], forecast[:, 0, :])
+                    forecasts = torch.cat([forecasts, forecast], dim=1)
+                
+                outputs = forecasts[:, -self.args.pred_len:, :].detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
 
                 pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
@@ -257,7 +207,6 @@ class Exp_Main(Exp_Basic):
 
                 preds.append(pred)
                 trues.append(true)
-                inputx.append(batch_x.detach().cpu().numpy())
                 if i % 20 == 0:
                     input = batch_x.detach().cpu().numpy()
                     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
@@ -269,11 +218,9 @@ class Exp_Main(Exp_Basic):
             exit()
         preds = np.array(preds)
         trues = np.array(trues)
-        inputx = np.array(inputx)
 
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
-        inputx = inputx.reshape(-1, inputx.shape[-2], inputx.shape[-1])
 
         # result save
         folder_path = './results/' + setting + '/'
@@ -313,23 +260,21 @@ class Exp_Main(Exp_Basic):
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[2]]).float().to(batch_y.device)
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                forecasts = torch.zeros(batch_x.shape[0], 1, batch_x.shape[-1]).cuda()
+
+                for i in range(self.args.pred_len):
+
+                    if (i <= self.args.seq_len):
+                        forecast = self.model(torch.cat([batch_x[:, i:, :], forecasts[:, 1:i + 1, :]], dim=1).cuda(),
+                                            torch.cat([batch_x_mark[:, i:, :], batch_y_mark[:, :i, :]], dim=1).cuda())
                     else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                pred = outputs.detach().cpu().numpy()  # .squeeze()
-                preds.append(pred)
+                        forecast = self.model(forecasts[:, 1 + i - self.args.seq_len:i + 1, :],
+                                            batch_y_mark[:, i - self.args.seq_len:i, :])
+
+                    forecasts = torch.cat([forecasts, forecast], dim=1)
+
+                pred = forecasts[:, -self.args.pred_len:, :].detach().cpu().numpy()
+                preds.append(pred[0])
 
         preds = np.array(preds)
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
