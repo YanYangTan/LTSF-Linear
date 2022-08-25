@@ -31,16 +31,10 @@ class Exp_HiddenCell(Exp_Basic):
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
 
-        self.modelShortY_list=[
-            'DeepAR'
-        ]
         return model
 
     def _get_data(self, flag):
-        if self.args.model in  self.modelShortY_list:
-            data_set, data_loader = data_provider(self.args, flag, ShortY=True)
-        else:
-            data_set, data_loader = data_provider(self.args, flag)
+        data_set, data_loader = data_provider(self.args, flag)
         return data_set, data_loader
 
     def _select_optimizer(self):

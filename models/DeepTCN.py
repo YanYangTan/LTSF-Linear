@@ -85,11 +85,12 @@ class Model(nn.Module):
 
         self.seq_len = configs.seq_len
         self.pred_len = configs.pred_len
+        self.label_len = configs.label_len
         self.c_in = configs.enc_in
         self.encoder = nn.ModuleList()
         self.outputLayer = nn.Sequential()
         for d in configs.dilations:
-            self.encoder.append(ResidualTCN(d=d, n_residue=configs.d_model))
+            self.encoder.append(ResidualTCN(d=d, n_residue=configs.d_model,k=configs.kernel_size))
         self.enc_embedding = CustomEmbedding_temp(configs.enc_in, configs.d_model, configs.embed, configs.freq, configs.dropout)
 
         self.dec_embedding = CustomEmbedding_temp(configs.enc_in, configs.d_model, configs.embed, configs.freq, configs.dropout)
@@ -105,7 +106,7 @@ class Model(nn.Module):
             inputSeries = subTCN(inputSeries)
         inputSeries = torch.mean(input=inputSeries,dim=1)
         enc_out=torch.unsqueeze(inputSeries,dim=1).repeat(1,x_mark_dec.shape[1],1)
-        dec_inp = torch.zeros([x_enc.shape[0], self.pred_len, x_enc.shape[-1]]).float().cuda()
+        dec_inp = torch.zeros([x_enc.shape[0], self.pred_len+self.label_len, x_enc.shape[-1]]).float().cuda()
         dec_inp = self.dec_embedding(dec_inp, x_mark_dec)
         output = self.decoder(enc_out,dec_inp)
         output = self.dense(output)

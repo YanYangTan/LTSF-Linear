@@ -29,6 +29,7 @@ parser.add_argument('--target', type=str, default='OT', help='target feature in 
 parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+parser.add_argument('--need_label', default=True, help='dataloader getitem include label length')
 # parser.add_argument('--predict_step', type=int, default=168) # Pyraformer
 # parser.add_argument('--input_size', type=int, default=168)# Pyraformer
 
@@ -68,6 +69,9 @@ parser.add_argument('--do_predict', action='store_true', help='whether to predic
 parser.add_argument('--std', type=float, default=0.2)#ETS
 parser.add_argument('--dilations',type=int,default=[1,2,4,8,16])
 parser.add_argument('--mix', default=True) # SparseTransformer
+
+#DeepTCN
+parser.add_argument('--kernel_size', type=int, default=2, help='')
 
 #StemGNN
 parser.add_argument('--stack_cnt', type=int, default=2, help='')

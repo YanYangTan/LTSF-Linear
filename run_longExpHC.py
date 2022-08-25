@@ -31,6 +31,7 @@ parser.add_argument('--freq', type=str, default='h',
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 parser.add_argument('--predict_step', type=int, default=168) # Pyraformer
 parser.add_argument('--input_size', type=int, default=168)# Pyraformer
+parser.add_argument('--need_label', default=True,help='dataloader getitem include label length')
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')

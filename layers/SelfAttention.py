@@ -67,13 +67,21 @@ class AttentionLayer(nn.Module):
         keys = self.key_projection(keys).view(B, S, H, -1)
         values = self.value_projection(values).view(B, S, H, -1)
 
-        out, attn = self.inner_attention(
-            queries,
-            keys,
-            values,
-            attn_mask,
-            tau, delta
-        )
+        if tau is not None and delta is not None:
+            out, attn = self.inner_attention(
+                queries,
+                keys,
+                values,
+                attn_mask,
+                tau, delta
+            )
+        else:
+            out, attn = self.inner_attention(
+                queries,
+                keys,
+                values,
+                attn_mask
+            )
         if self.mix:
             out = out.transpose(2, 1).contiguous()
         out = out.view(B, L, -1)

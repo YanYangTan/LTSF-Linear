@@ -46,6 +46,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
         self.seq_len = configs.seq_len
+        self.label_len = configs.label_len
         self.pred_len = configs.pred_len
 
         # Encoding
@@ -67,7 +68,7 @@ class Model(nn.Module):
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
-        dec_inp = torch.zeros([x_enc.shape[0], self.pred_len, x_enc.shape[-1]]).float().cuda()
+        dec_inp = torch.zeros([x_enc.shape[0], self.pred_len + self.label_len, x_enc.shape[-1]]).float().cuda()
         input = self.embedding(torch.cat([x_enc,dec_inp],dim=1), torch.cat([x_mark_enc,x_mark_dec],dim=1))
 
 

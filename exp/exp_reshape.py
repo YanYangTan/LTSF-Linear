@@ -31,16 +31,10 @@ class Exp_Reshape(Exp_Basic):
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
 
-        self.modelShortY_list=[
-            'LSTNet'
-        ]
         return model
 
     def _get_data(self, flag):
-        if self.args.model in  self.modelShortY_list:
-            data_set, data_loader = data_provider(self.args, flag, ShortY=True)
-        else:
-            data_set, data_loader = data_provider(self.args, flag)
+        data_set, data_loader = data_provider(self.args, flag)
         return data_set, data_loader
 
     def _select_optimizer(self):
@@ -57,7 +51,7 @@ class Exp_Reshape(Exp_Basic):
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
+                batch_y = batch_y.float().to(self.device)
 
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
@@ -75,7 +69,7 @@ class Exp_Reshape(Exp_Basic):
                     loss += criterion(batch_y[:, i, :], forecast[:, 0, :])
                     forecasts = torch.cat([forecasts, forecast], dim=1)
 
-                total_loss.append(loss)
+                total_loss.append(loss.detach().cpu().numpy())
         total_loss = np.average(total_loss)
         self.model.train()
         return total_loss
@@ -176,6 +170,8 @@ class Exp_Reshape(Exp_Basic):
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
+        
+        criterion = self._select_criterion()
 
         self.model.eval()
         with torch.no_grad():
@@ -200,7 +196,7 @@ class Exp_Reshape(Exp_Basic):
                     forecasts = torch.cat([forecasts, forecast], dim=1)
                 
                 outputs = forecasts[:, -self.args.pred_len:, :].detach().cpu().numpy()
-                batch_y = batch_y.detach().cpu().numpy()
+                batch_y = batch_y[:, -self.args.pred_len:, :].detach().cpu().numpy()
 
                 pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
                 true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()

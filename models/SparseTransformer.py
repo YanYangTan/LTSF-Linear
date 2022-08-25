@@ -118,10 +118,10 @@ class Model(nn.Module):
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
-        dec_inp = torch.zeros([x_enc.shape[0], self.pred_len, x_enc.shape[-1]]).float().cuda()
-        dec_inp = torch.cat([x_enc[:, -self.label_len:, :], dec_inp], dim=1).float().cuda()
-        x_dec = dec_inp
-        x_mark_dec = torch.cat([x_mark_enc[:, -self.label_len:, :], x_mark_dec], dim=1)
+        # dec_inp = torch.zeros([x_enc.shape[0], self.pred_len, x_enc.shape[-1]]).float().cuda()
+        # dec_inp = torch.cat([x_enc[:, -self.label_len:, :], dec_inp], dim=1).float().cuda()
+        # x_dec = dec_inp
+        # x_mark_dec = torch.cat([x_mark_enc[:, -self.label_len:, :], x_mark_dec], dim=1)
 
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)

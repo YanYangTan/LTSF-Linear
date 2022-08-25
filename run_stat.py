@@ -28,6 +28,7 @@ parser.add_argument('--features', type=str, default='M',
 parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 parser.add_argument('--sample', type=float, default=1, help='Sampling percentage, the inference time of ARIMA and SARIMA is too long, you might sample 0.01')
+parser.add_argument('--need_label', default=True,help='dataloader getitem include label length')
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
