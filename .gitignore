@@ -1,7 +1,7 @@
 *soup*
 dataset/
-Pyraformer/
 checkpoints/
+test_results/
 *.bak
 .gitattributes
 .last_checked
