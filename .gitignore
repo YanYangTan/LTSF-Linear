@@ -1,5 +1,7 @@
 *soup*
-datasets/
+dataset/
+Pyraformer/
+checkpoints/
 *.bak
 .gitattributes
 .last_checked
@@ -14,6 +16,7 @@ tags
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
+*/__pycache__/
 *.py[cod]
 *$py.class
 

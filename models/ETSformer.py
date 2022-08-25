@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 
-from layers.ETSformer_modules import ETSEmbedding
-from layers.ETSformer_Encoder import EncoderLayer, Encoder
-from layers.ETSformer_Decoder import DecoderLayer, Decoder
+from layers.Embed import *
+from layers.ETSformer_EncDec import EncoderLayer, Encoder,DecoderLayer, Decoder
 
 
 class Transform:
@@ -37,7 +36,8 @@ class Model(nn.Module):
         assert configs.d_layers == configs.e_layers
 
         # Embedding
-        self.enc_embedding = ETSEmbedding(configs.enc_in, configs.d_model, dropout=configs.dropout)
+        # self.enc_embedding = ETSEmbedding(configs.enc_in, configs.d_model, dropout=configs.dropout)
+        self.enc_embedding = TokenEmbedding(configs.enc_in, configs.d_model, dropout=configs.dropout)
 
         # Encoder
         self.encoder = Encoder(

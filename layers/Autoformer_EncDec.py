@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
+from layers.SelfAttention import FullAttention
 
 
 class my_Layernorm(nn.Module):
@@ -28,8 +30,8 @@ class moving_avg(nn.Module):
 
     def forward(self, x):
         # padding on the both ends of time series
-        front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
-        end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
+        front = x[:, 0:1, :].repeat(1, self.kernel_size - 1-math.floor((self.kernel_size - 1) // 2), 1)
+        end = x[:, -1:, :].repeat(1, math.floor((self.kernel_size - 1) // 2), 1)
         x = torch.cat([front, x, end], dim=1)
         x = self.avg(x.permute(0, 2, 1))
         x = x.permute(0, 2, 1)
@@ -50,6 +52,35 @@ class series_decomp(nn.Module):
         return res, moving_mean
 
 
+class series_decomp_multi(nn.Module):
+    """
+    Series decomposition block
+    """
+    def __init__(self, kernel_size):
+        super(series_decomp_multi, self).__init__()
+        self.moving_avg = [moving_avg(kernel, stride=1) for kernel in kernel_size]
+        self.layer = torch.nn.Linear(1, len(kernel_size))
+
+    def forward(self, x):
+        moving_mean=[]
+        for func in self.moving_avg:
+            moving_avg = func(x)
+            moving_mean.append(moving_avg.unsqueeze(-1))
+        moving_mean=torch.cat(moving_mean,dim=-1)
+        moving_mean = torch.sum(moving_mean*nn.Softmax(-1)(self.layer(x.unsqueeze(-1))),dim=-1)
+        res = x - moving_mean
+        return res, moving_mean 
+
+
+class FourierDecomp(nn.Module):
+    def __init__(self):
+        super(FourierDecomp, self).__init__()
+        pass
+
+    def forward(self, x):
+        x_ft = torch.fft.rfft(x, dim=-1)
+
+
 class EncoderLayer(nn.Module):
     """
     Autoformer encoder layer with the progressive decomposition architecture
@@ -60,16 +91,29 @@ class EncoderLayer(nn.Module):
         self.attention = attention
         self.conv1 = nn.Conv1d(in_channels=d_model, out_channels=d_ff, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(in_channels=d_ff, out_channels=d_model, kernel_size=1, bias=False)
-        self.decomp1 = series_decomp(moving_avg)
-        self.decomp2 = series_decomp(moving_avg)
+
+        if isinstance(moving_avg, list):
+            self.decomp1 = series_decomp_multi(moving_avg)
+            self.decomp2 = series_decomp_multi(moving_avg)
+        else:
+            self.decomp1 = series_decomp(moving_avg)
+            self.decomp2 = series_decomp(moving_avg)
+
         self.dropout = nn.Dropout(dropout)
         self.activation = F.relu if activation == "relu" else F.gelu
 
-    def forward(self, x, attn_mask=None):
-        new_x, attn = self.attention(
+    def forward(self, x, attn_mask=None, tau=None, delta=None):
+        if tau is not None and delta is not None:
+            new_x, attn = self.attention(
             x, x, x,
-            attn_mask=attn_mask
+            attn_mask=attn_mask,
+            tau=tau, delta=delta
         )
+        else:
+            new_x, attn = self.attention(
+                x, x, x,
+                attn_mask=attn_mask
+            )
         x = x + self.dropout(new_x)
         x, _ = self.decomp1(x)
         y = x
@@ -77,7 +121,6 @@ class EncoderLayer(nn.Module):
         y = self.dropout(self.conv2(y).transpose(-1, 1))
         res, _ = self.decomp2(x + y)
         return res, attn
-
 
 class Encoder(nn.Module):
     """
@@ -89,18 +132,19 @@ class Encoder(nn.Module):
         self.conv_layers = nn.ModuleList(conv_layers) if conv_layers is not None else None
         self.norm = norm_layer
 
-    def forward(self, x, attn_mask=None):
+    def forward(self, x, attn_mask=None, tau=None, delta=None):
+        # x [B, L, D]
         attns = []
         if self.conv_layers is not None:
             for attn_layer, conv_layer in zip(self.attn_layers, self.conv_layers):
-                x, attn = attn_layer(x, attn_mask=attn_mask)
+                x, attn = attn_layer(x, attn_mask=attn_mask, tau=tau, delta=delta)
                 x = conv_layer(x)
                 attns.append(attn)
-            x, attn = self.attn_layers[-1](x)
+            x, attn = self.attn_layers[-1](x, tau=tau, delta=delta)
             attns.append(attn)
         else:
             for attn_layer in self.attn_layers:
-                x, attn = attn_layer(x, attn_mask=attn_mask)
+                x, attn = attn_layer(x, attn_mask=attn_mask, tau=tau, delta=delta)
                 attns.append(attn)
 
         if self.norm is not None:
@@ -121,24 +165,47 @@ class DecoderLayer(nn.Module):
         self.cross_attention = cross_attention
         self.conv1 = nn.Conv1d(in_channels=d_model, out_channels=d_ff, kernel_size=1, bias=False)
         self.conv2 = nn.Conv1d(in_channels=d_ff, out_channels=d_model, kernel_size=1, bias=False)
-        self.decomp1 = series_decomp(moving_avg)
-        self.decomp2 = series_decomp(moving_avg)
-        self.decomp3 = series_decomp(moving_avg)
+
+        if isinstance(moving_avg, list):
+            self.decomp1 = series_decomp_multi(moving_avg)
+            self.decomp2 = series_decomp_multi(moving_avg)
+            self.decomp3 = series_decomp_multi(moving_avg)
+        else:
+            self.decomp1 = series_decomp(moving_avg)
+            self.decomp2 = series_decomp(moving_avg)
+            self.decomp3 = series_decomp(moving_avg)
+
         self.dropout = nn.Dropout(dropout)
         self.projection = nn.Conv1d(in_channels=d_model, out_channels=c_out, kernel_size=3, stride=1, padding=1,
                                     padding_mode='circular', bias=False)
         self.activation = F.relu if activation == "relu" else F.gelu
 
-    def forward(self, x, cross, x_mask=None, cross_mask=None):
-        x = x + self.dropout(self.self_attention(
-            x, x, x,
-            attn_mask=x_mask
-        )[0])
-        x, trend1 = self.decomp1(x)
-        x = x + self.dropout(self.cross_attention(
-            x, cross, cross,
-            attn_mask=cross_mask
-        )[0])
+    def forward(self, x, cross, x_mask=None, cross_mask=None, tau=None, delta=None):
+        if tau is not None and delta is not None:
+            x = x + self.dropout(self.self_attention(
+                x, x, x,
+                attn_mask=x_mask,
+                tau=tau #, delta=delta
+            )[0])
+
+            x, trend1 = self.decomp1(x)
+            x = x + self.dropout(self.cross_attention(
+                x, cross, cross,
+                attn_mask=cross_mask,
+                tau=tau, delta=delta
+            )[0])
+        else:
+            x = x + self.dropout(self.self_attention(
+                x, x, x,
+                attn_mask=x_mask,
+            )[0])
+
+            x, trend1 = self.decomp1(x)
+            x = x + self.dropout(self.cross_attention(
+                x, cross, cross,
+                attn_mask=cross_mask
+            )[0])
+
         x, trend2 = self.decomp2(x)
         y = x
         y = self.dropout(self.activation(self.conv1(y.transpose(-1, 1))))
@@ -148,7 +215,6 @@ class DecoderLayer(nn.Module):
         residual_trend = trend1 + trend2 + trend3
         residual_trend = self.projection(residual_trend.permute(0, 2, 1)).transpose(1, 2)
         return x, residual_trend
-
 
 class Decoder(nn.Module):
     """
@@ -160,14 +226,25 @@ class Decoder(nn.Module):
         self.norm = norm_layer
         self.projection = projection
 
-    def forward(self, x, cross, x_mask=None, cross_mask=None, trend=None):
-        for layer in self.layers:
-            x, residual_trend = layer(x, cross, x_mask=x_mask, cross_mask=cross_mask)
-            trend = trend + residual_trend
+    def forward(self, x, cross, x_mask=None, cross_mask=None, trend=None, tau=None, delta=None):
+        if trend == None:
+            for layer in self.layers:
+                x, residual_trend = layer(x, cross, x_mask=x_mask, cross_mask=cross_mask, tau=tau, delta=delta)
 
-        if self.norm is not None:
-            x = self.norm(x)
+            if self.norm is not None:
+                x = self.norm(x)
 
-        if self.projection is not None:
-            x = self.projection(x)
-        return x, trend
+            if self.projection is not None:
+                x = self.projection(x)
+            return x
+        else:
+            for layer in self.layers:
+                x, residual_trend = layer(x, cross, x_mask=x_mask, cross_mask=cross_mask, tau=tau, delta=delta)
+                trend = trend + residual_trend
+
+            if self.norm is not None:
+                x = self.norm(x)
+
+            if self.projection is not None:
+                x = self.projection(x)
+            return x, trend

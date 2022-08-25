@@ -1,7 +1,6 @@
 import torch, math
 import torch.nn as nn
 from layers.Embed import DataEmbedding, DataEmbedding_wo_pos,DataEmbedding_wo_pos_temp,DataEmbedding_wo_temp
-
 from layers.Pyraformer_Layers import Bottleneck_Construct, Conv_Construct, MaxPooling_Construct, AvgPooling_Construct
 from layers.Pyraformer_Layers import EncoderLayer
 from layers.Embed import DataEmbedding

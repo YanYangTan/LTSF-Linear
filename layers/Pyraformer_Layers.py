@@ -3,8 +3,6 @@ from .Pyraformer_SubLayers import MultiHeadAttention, PositionwiseFeedForward
 import torch
 
 
-
-
 class EncoderLayer(nn.Module):
     """ Compose with two layers """
 
@@ -37,40 +35,6 @@ class ConvLayer(nn.Module):
         x = self.norm(x)
         x = self.activation(x)
         return x
-
-
-class Conv_Construct(nn.Module):
-    """Convolution CSCM"""
-    def __init__(self, d_model, window_size, d_inner):
-        super(Conv_Construct, self).__init__()
-        if not isinstance(window_size, list):
-            self.conv_layers = nn.ModuleList([
-                ConvLayer(d_model, window_size),
-                ConvLayer(d_model, window_size),
-                ConvLayer(d_model, window_size)
-                ])
-        else:
-            self.conv_layers = nn.ModuleList([
-                ConvLayer(d_model, window_size[0]),
-                ConvLayer(d_model, window_size[1]),
-                ConvLayer(d_model, window_size[2])
-                ])
-        self.norm = nn.LayerNorm(d_model)
-
-    def forward(self, enc_input):
-        all_inputs = []
-        enc_input = enc_input.permute(0, 2, 1)
-        all_inputs.append(enc_input)
-
-        for i in range(len(self.conv_layers)):
-            enc_input = self.conv_layers[i](enc_input)
-            all_inputs.append(enc_input)
-
-        all_inputs = torch.cat(all_inputs, dim=2).transpose(1, 2)
-        all_inputs = self.norm(all_inputs)
-
-        return all_inputs
-
 
 class Bottleneck_Construct(nn.Module):
     """Bottleneck convolution CSCM"""
@@ -107,69 +71,50 @@ class Bottleneck_Construct(nn.Module):
 
         return all_inputs
 
+class PositionwiseFeedForward(nn.Module):
+    """ Two-layer position-wise feed-forward neural network. """
 
-class MaxPooling_Construct(nn.Module):
-    """Max pooling CSCM"""
-    def __init__(self, d_model, window_size, d_inner):
-        super(MaxPooling_Construct, self).__init__()
-        if not isinstance(window_size, list):
-            self.pooling_layers = nn.ModuleList([
-                nn.MaxPool1d(kernel_size=window_size),
-                nn.MaxPool1d(kernel_size=window_size),
-                nn.MaxPool1d(kernel_size=window_size)
-                ])
-        else:
-            self.pooling_layers = nn.ModuleList([
-                nn.MaxPool1d(kernel_size=window_size[0]),
-                nn.MaxPool1d(kernel_size=window_size[1]),
-                nn.MaxPool1d(kernel_size=window_size[2])
-                ])
-        self.norm = nn.LayerNorm(d_model)
+    def __init__(self, d_in, d_hid, dropout=0.1, normalize_before=True):
+        super().__init__()
 
-    def forward(self, enc_input):
-        all_inputs = []
-        enc_input = enc_input.transpose(1, 2).contiguous()
-        all_inputs.append(enc_input)
+        self.normalize_before = normalize_before
 
-        for layer in self.pooling_layers:
-            enc_input = layer(enc_input)
-            all_inputs.append(enc_input)
+        self.w_1 = nn.Linear(d_in, d_hid)
+        self.w_2 = nn.Linear(d_hid, d_in)
 
-        all_inputs = torch.cat(all_inputs, dim=2).transpose(1, 2)
-        all_inputs = self.norm(all_inputs)
+        self.layer_norm = nn.LayerNorm(d_in, eps=1e-6)
+        #self.layer_norm = GraphNorm(d_in)
+        self.dropout = nn.Dropout(dropout)
 
-        return all_inputs
+    def forward(self, x):
+        residual = x
+        if self.normalize_before:
+            x = self.layer_norm(x)
 
+        x = F.gelu(self.w_1(x))
+        x = self.dropout(x)
+        x = self.w_2(x)
+        x = self.dropout(x)
+        x = x + residual
 
-class AvgPooling_Construct(nn.Module):
-    """Average pooling CSCM"""
-    def __init__(self, d_model, window_size, d_inner):
-        super(AvgPooling_Construct, self).__init__()
-        if not isinstance(window_size, list):
-            self.pooling_layers = nn.ModuleList([
-                nn.AvgPool1d(kernel_size=window_size),
-                nn.AvgPool1d(kernel_size=window_size),
-                nn.AvgPool1d(kernel_size=window_size)
-                ])
-        else:
-            self.pooling_layers = nn.ModuleList([
-                nn.AvgPool1d(kernel_size=window_size[0]),
-                nn.AvgPool1d(kernel_size=window_size[1]),
-                nn.AvgPool1d(kernel_size=window_size[2])
-                ])
-        self.norm = nn.LayerNorm(d_model)
+        if not self.normalize_before:
+            x = self.layer_norm(x)
+        return x
 
-    def forward(self, enc_input):
-        all_inputs = []
-        enc_input = enc_input.transpose(1, 2).contiguous()
-        all_inputs.append(enc_input)
+class EncoderLayer(nn.Module):
+    """ Compose with two layers """
 
-        for layer in self.pooling_layers:
-            enc_input = layer(enc_input)
-            all_inputs.append(enc_input)
+    def __init__(self, d_model, d_inner, n_head, d_k, d_v, dropout=0.1, normalize_before=True, use_tvm=False, q_k_mask=None, k_q_mask=None):
+        super(EncoderLayer, self).__init__()
+        self.slf_attn = MultiHeadAttention(n_head, d_model, d_k, d_v, dropout=dropout, normalize_before=normalize_before)
 
-        all_inputs = torch.cat(all_inputs, dim=2).transpose(1, 2)
-        all_inputs = self.norm(all_inputs)
+        self.pos_ffn = PositionwiseFeedForward(
+            d_model, d_inner, dropout=dropout, normalize_before=normalize_before)
 
-        return all_inputs
+    def forward(self, enc_input, slf_attn_mask=None):
+        enc_output, enc_slf_attn = self.slf_attn(enc_input, enc_input, enc_input, mask=slf_attn_mask)
+
+        enc_output = self.pos_ffn(enc_output)
+        
+        return enc_output, enc_slf_attn
 

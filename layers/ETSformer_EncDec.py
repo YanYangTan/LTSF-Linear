@@ -1,6 +1,72 @@
 import torch
 import torch.nn as nn
-from einops import rearrange, reduce, repeat
+import torch.nn.functional as F
+import torch.fft as fft
+
+from einops import  repeat
+import math, random
+
+from .ETSformer_modules import *
+
+class EncoderLayer(nn.Module):
+
+    def __init__(self, d_model, nhead, c_out, pred_len, k, dim_feedforward=None, dropout=0.1,
+                 activation='sigmoid', layer_norm_eps=1e-5):
+        super().__init__()
+        self.d_model = d_model
+        self.nhead = nhead
+        self.c_out = c_out
+        self.pred_len = pred_len
+        dim_feedforward = dim_feedforward or 4 * d_model
+        self.dim_feedforward = dim_feedforward
+
+        self.growth_layer = GrowthLayer(d_model, nhead, dropout=dropout)
+        self.seasonal_layer = FourierLayer(d_model, pred_len, k=k)
+        self.level_layer = LevelLayer(d_model, c_out, dropout=dropout)
+
+        # Implementation of Feedforward model
+        self.ff = Feedforward(d_model, dim_feedforward, dropout=dropout, activation=activation)
+        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps)
+        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps)
+
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+    def forward(self, res, level, attn_mask=None):
+        season = self._season_block(res)
+        res = res - season[:, :-self.pred_len]
+        growth = self._growth_block(res)
+        res = self.norm1(res - growth[:, 1:])
+        res = self.norm2(res + self.ff(res))
+
+        level = self.level_layer(level, growth[:, :-1], season[:, :-self.pred_len])
+
+        return res, level, growth, season
+
+    def _growth_block(self, x):
+        x = self.growth_layer(x)
+        return self.dropout1(x)
+
+    def _season_block(self, x):
+        x = self.seasonal_layer(x)
+        return self.dropout2(x)
+
+
+class Encoder(nn.Module):
+
+    def __init__(self, layers):
+        super().__init__()
+        self.layers = nn.ModuleList(layers)
+
+    def forward(self, res, level, attn_mask=None):
+        growths = []
+        seasons = []
+        for layer in self.layers:
+            res, level, growth, season = layer(res, level, attn_mask=None)
+            growths.append(growth)
+            seasons.append(season)
+
+        return level, growths, seasons
 
 
 class DampingLayer(nn.Module):
